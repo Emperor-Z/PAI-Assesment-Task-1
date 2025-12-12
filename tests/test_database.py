@@ -204,6 +204,20 @@ class TestDatabaseManager(unittest.TestCase):
         self.assertEqual(2, len(rows))
         self.assertIn(raw_row, rows)
 
+    def test_get_all_clean_responses_returns_survey_responses(self) -> None:
+        """
+        Clean responses should be fetched as SurveyResponse objects.
+        """
+        response = self._make_sample_response()
+        self.db_manager.insert_survey_response(response)
+
+        responses = self.db_manager.get_all_clean_responses()
+        self.assertEqual(1, len(responses))
+        clean = responses[0]
+        self.assertEqual(response.age, clean.age)
+        self.assertEqual(response.primary_streaming_service, clean.primary_streaming_service)
+        self.assertEqual(response.anxiety_score, clean.anxiety_score)
+
     def test_get_respondent_by_id_returns_correct_row(self) -> None:
         """
         GIVEN an inserted SurveyResponse
