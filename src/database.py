@@ -248,3 +248,51 @@ class DatabaseManager:
         cursor.execute("SELECT raw_json FROM RawResponses ORDER BY id ASC")
         rows = cursor.fetchall()
         return [json.loads(row[0]) for row in rows]
+
+    def get_all_clean_responses(self) -> List[SurveyResponse]:
+        """
+        Return SurveyResponse objects sourced from the curated tables.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT
+                Respondents.age,
+                Respondents.primary_streaming_service,
+                HealthStats.anxiety,
+                HealthStats.depression,
+                HealthStats.insomnia,
+                HealthStats.ocd
+            FROM Respondents
+            INNER JOIN HealthStats
+                ON Respondents.id = HealthStats.respondent_id
+            ORDER BY Respondents.id ASC
+            """
+        )
+        responses: List[SurveyResponse] = []
+        for age, service, anxiety, depression, insomnia, ocd in cursor.fetchall():
+            responses.append(
+                SurveyResponse(
+                    timestamp="",
+                    age=age,
+                    primary_streaming_service=service,
+                    hours_per_day=0.0,
+                    while_working=False,
+                    instrumentalist=False,
+                    composer=False,
+                    fav_genre="",
+                    exploratory=False,
+                    foreign_languages=False,
+                    bpm=None,
+                    anxiety_score=anxiety,
+                    depression_score=depression,
+                    insomnia_score=insomnia,
+                    ocd_score=ocd,
+                    music_effects="",
+                    genre_frequencies={},
+                )
+            )
+        return responses
