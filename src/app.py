@@ -35,10 +35,10 @@ def create_app(
         Optional explicit path to the log file. If None, defaults to
         logs/app.log.
     """
-    app = Flask(__name__)
-    app.config["TESTING"] = testing
-
     base_dir = os.path.dirname(os.path.dirname(__file__))
+    template_dir = os.path.join(base_dir, "templates")
+    app = Flask(__name__, template_folder=template_dir)
+    app.config["TESTING"] = testing
 
     if csv_path is None:
         csv_path = os.path.join(base_dir, "data", "mxmh_survey_results.csv")
@@ -55,11 +55,16 @@ def create_app(
     app.config["CSV_PATH"] = csv_path
     app.config["LOG_PATH"] = log_path
 
+    def _build_service() -> InsightsService:
+        """Build an InsightsService using the configured CSV path."""
+        path = app.config["CSV_PATH"]
+        responses = load_survey_responses_from_csv(path)
+        return InsightsService(responses)
+
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
     def home() -> str:  # pragma: no cover (stub)
-        # Placeholder implementation to satisfy imports; tests will drive details.
-        return "HOME PLACEHOLDER"
+        return render_template("home.html")
 
     @app.route("/genre", methods=["GET", "POST"])
     def genre_insights() -> str:

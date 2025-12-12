@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Streaming service usage</h2>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>Streaming service</th>
+            <th>Respondent count</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for service, count in counts.items() %}
+        <tr>
+            <td>{{ service }}</td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Listening duration vs average anxiety</h2>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>Hours per day bucket</th>
+            <th>Average anxiety</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bucket, value in buckets.items() %}
+        <tr>
+            <td>{{ bucket }}</td>
+            <td>{{ value }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

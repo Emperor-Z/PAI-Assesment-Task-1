@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h2>Genre-based mental health insights</h2>
-
+<h1>Select a genre</h1>
 <form method="post">
-    <label for="genre">Select a genre:</label>
-    <input type="text" id="genre" name="genre" placeholder="e.g. Lofi" required>
-    <button type="submit">Show insights</button>
+  <label for="genre">Genre</label>
+  <input type="text" id="genre" name="genre" />
+  <button type="submit">Get stats</button>
 </form>
 
 {% if stats %}
-<h3>Results for {{ stats.genre }}</h3>
-<p>Average anxiety: {{ stats.avg_anxiety }}</p>
-<p>Average depression: {{ stats.avg_depression }}</p>
+<section>
+  <h2>Results for {{ stats.genre }}</h2>
+  <p>Average anxiety: {{ stats.avg_anxiety }}</p>
+  <p>Average depression: {{ stats.avg_depression }}</p>
+</section>
 {% endif %}
 {% endblock %}
