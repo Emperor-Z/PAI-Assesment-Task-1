@@ -152,3 +152,16 @@ class TestInsightsService(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.service.get_genre_means("unknown")
+
+    def test_get_factor_means(self) -> None:
+        """Boolean factor means should split results by True/False."""
+        means = self.service.get_factor_means("while_working", "anxiety")
+        self.assertAlmostEqual(5.0, means[True])
+        self.assertAlmostEqual(3.0, means[False])
+
+        criteria = FilterCriteria(streaming_service="Spotify")
+        filtered = self.service.get_factor_means("while_working", "anxiety", criteria)
+        self.assertEqual({True: 5.0}, filtered)
+
+        with self.assertRaises(ValueError):
+            self.service.get_factor_means("unknown_factor", "anxiety")
