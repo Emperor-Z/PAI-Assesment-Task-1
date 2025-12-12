@@ -271,28 +271,75 @@ def create_app(
 
     @app.route("/genre", methods=["GET", "POST"])
     def genre_insights() -> str:
-        """
-        Show a simple form to request genre-based mental health insights.
+        """Provide a deeper dive into a specific favourite genre."""
+        service = _get_service()
+        min_n = _get_min_n()
+        filter_options = service.get_filter_options()
+        genre_options = sorted(filter_options["genres"])
+        if "Unknown" not in genre_options:
+            genre_options.append("Unknown")
+        score_metrics = [
+            ("anxiety", "Anxiety"),
+            ("depression", "Depression"),
+            ("insomnia", "Insomnia"),
+            ("ocd", "OCD"),
+        ]
+        metric_lookup = {key: label for key, label in score_metrics}
 
-        In this step we only implement the GET behaviour; POST will be
-        implemented in a later TDD step.
-        """
-        if request.method == "GET":
-            stats: Dict[str, float] | None = None
-            return render_template("genre.html", stats=stats)
+        selected_genre = ""
+        selected_metric = (request.values.get("metric") or "anxiety").lower()
+        if selected_metric not in metric_lookup:
+            selected_metric = "anxiety"
 
-        genre = request.form.get("genre", "").strip()
-        stats = None
-        if genre:
-            service = _get_service()
-            service_stats = service.get_average_anxiety_and_depression_by_genre(genre)
-            stats = {
-                "genre": service_stats.get("genre", genre),
-                "avg_anxiety": service_stats.get("avg_anxiety", 0.0),
-                "avg_depression": service_stats.get("avg_depression", 0.0),
-            }
+        if request.method == "POST":
+            selected_genre = request.form.get("genre", "").strip()
+        else:
+            selected_genre = request.args.get("genre", "").strip()
 
-        return render_template("genre.html", stats=stats)
+        genre_stats_list = service.get_mean_scores_by_genre(filters=None, min_n=1)
+        genre_stats_map = {row["genre"]: row for row in genre_stats_list}
+        stats_entry = None
+        warning_message = None
+        chart_url: str | None = None
+        deltas: Dict[str, float] = {}
+        overall_means = service.get_overview().get("mean_scores", {})
+
+        if selected_genre:
+            key = selected_genre
+            stats_entry = genre_stats_map.get(key)
+            if stats_entry:
+                chart_url = url_for(
+                    "genre_distribution_chart",
+                    genre=key,
+                    metric=selected_metric,
+                )
+                deltas = {
+                    "anxiety": stats_entry["anxiety_mean"] - overall_means.get("anxiety", 0.0),
+                    "depression": stats_entry["depression_mean"] - overall_means.get("depression", 0.0),
+                    "insomnia": stats_entry["insomnia_mean"] - overall_means.get("insomnia", 0.0),
+                    "ocd": stats_entry["ocd_mean"] - overall_means.get("ocd", 0.0),
+                }
+                if stats_entry["n"] < min_n:
+                    warning_message = (
+                        f"Only {stats_entry['n']} respondents meet the filters; "
+                        f"min_n={min_n}. Rankings and comparisons may be noisy."
+                    )
+
+        return render_template(
+            "genre.html",
+            genre_options=genre_options,
+            selected_genre=selected_genre,
+            stats_entry=stats_entry,
+            warning_message=warning_message,
+            chart_url=chart_url,
+            metric_labels=score_metrics,
+            metric_lookup=metric_lookup,
+            selected_metric=selected_metric,
+            deltas=deltas,
+            overall_means=overall_means,
+            min_n_options=[1, 3, 5, 10],
+            selected_min_n=min_n,
+        )
 
 
     @app.route("/streaming", methods=["GET"])
@@ -351,6 +398,30 @@ def create_app(
         criteria = _parse_filter_criteria()
         top_genres = service.get_top_genres(criteria)
         png = render_top_genres_chart(top_genres)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/genre-distribution.png", methods=["GET"])
+    def genre_distribution_chart() -> Response:
+        service = _get_service()
+        metric = (request.args.get("metric") or "anxiety").lower()
+        metric_labels = {
+            "anxiety": "Anxiety",
+            "depression": "Depression",
+            "insomnia": "Insomnia",
+            "ocd": "OCD",
+        }
+        if metric not in metric_labels:
+            metric = "anxiety"
+        genre = request.args.get("genre", "").strip() or "Unknown"
+        responses = service.get_responses_by_genre(genre)
+        distribution: Dict[int, int] = {}
+        score_attr = f"{metric}_score"
+        for response in responses:
+            score = getattr(response, score_attr)
+            distribution[score] = distribution.get(score, 0) + 1
+        if not distribution:
+            distribution = {0: 0}
+        png = render_score_distribution_chart(metric_labels[metric], distribution)
         return Response(png, mimetype="image/png")
 
     @app.route("/charts/genre-vs-anxiety.png", methods=["GET"])

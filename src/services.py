@@ -210,6 +210,12 @@ class InsightsService:
             "age_groups": list(AGE_GROUP_RULES.keys()),
         }
 
+    def get_responses_by_genre(self, genre: str) -> List[SurveyResponse]:
+        """Return curated responses matching a favourite genre label."""
+        normalised = (genre or "Unknown").strip() or "Unknown"
+        responses = self._get_responses()
+        return [resp for resp in responses if (resp.fav_genre or "Unknown") == normalised]
+
     @log_action("GET_MEAN_SCORES_BY_GENRE")
     def get_mean_scores_by_genre(
         self,

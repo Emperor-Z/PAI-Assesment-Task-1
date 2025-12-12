@@ -1,17 +1,62 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Select a genre</h1>
-<form method="post">
-  <label for="genre">Genre</label>
-  <input type="text" id="genre" name="genre" />
-  <button type="submit">Get stats</button>
+<h1>Genre deep dive</h1>
+<form method="get" class="filter-form">
+  <div class="filter-grid">
+    <label for="genre">Genre</label>
+    <select id="genre" name="genre">
+      <option value="">Select a genre</option>
+      {% for genre in genre_options %}
+      <option value="{{ genre }}" {% if genre == selected_genre %}selected{% endif %}>{{ genre }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="metric">Score</label>
+    <select id="metric" name="metric">
+      {% for key, label in metric_labels %}
+      <option value="{{ key }}" {% if key == selected_metric %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="min_n">Group minimum (min_n)</label>
+    <select id="min_n" name="min_n">
+      {% for option in min_n_options %}
+      <option value="{{ option }}" {% if option == selected_min_n %}selected{% endif %}>{{ option }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="filter-actions">
+    <button type="submit">View insights</button>
+    <a class="link-button" href="{{ url_for('genre_insights') }}">Clear</a>
+  </div>
 </form>
 
-{% if stats %}
-<section>
-  <h2>Results for {{ stats.genre }}</h2>
-  <p>Average anxiety: {{ stats.avg_anxiety }}</p>
-  <p>Average depression: {{ stats.avg_depression }}</p>
-</section>
+{% if selected_genre %}
+  {% if stats_entry %}
+    <section class="stat-card">
+      <h2>{{ selected_genre }} respondents</h2>
+      <p>Respondents: {{ stats_entry.n }}</p>
+      <ul>
+        <li>Anxiety mean: {{ "%.1f"|format(stats_entry.anxiety_mean) }} (Δ {{ "%.1f"|format(deltas.anxiety) }})</li>
+        <li>Depression mean: {{ "%.1f"|format(stats_entry.depression_mean) }} (Δ {{ "%.1f"|format(deltas.depression) }})</li>
+        <li>Insomnia mean: {{ "%.1f"|format(stats_entry.insomnia_mean) }} (Δ {{ "%.1f"|format(deltas.insomnia) }})</li>
+        <li>OCD mean: {{ "%.1f"|format(stats_entry.ocd_mean) }} (Δ {{ "%.1f"|format(deltas.ocd) }})</li>
+      </ul>
+      {% if warning_message %}
+      <p class="warning">{{ warning_message }}</p>
+      {% endif %}
+    </section>
+
+    <section class="chart-card">
+      <h3>{{ metric_lookup[selected_metric] }} distribution ({{ selected_genre }})</h3>
+      {% if chart_url %}
+      <img src="{{ chart_url }}" alt="Genre distribution chart" />
+      {% endif %}
+    </section>
+  {% else %}
+    <p class="no-data">No respondents recorded for {{ selected_genre }}.</p>
+  {% endif %}
+{% else %}
+  <p>Select a genre to view mental health statistics and score distributions.</p>
 {% endif %}
 {% endblock %}
