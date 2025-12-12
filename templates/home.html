@@ -1,5 +1,30 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Music & Mental Health Insights</h1>
-<p>Explore listening habits and wellbeing statistics.</p>
+<p>
+  Explore listening habits and wellbeing statistics derived from the cleaned
+  survey dataset. Invalid rows are safely staged and dropped before reaching
+  this dashboard.
+</p>
+
+<section>
+  <h2>Overview</h2>
+  <p>Total cleaned respondents: {{ total_respondents }}</p>
+  <p>Top streaming service: {{ top_service }}</p>
+</section>
+
+<section>
+  <h2>Dashboard</h2>
+  <div>
+    <h3>Streaming service usage</h3>
+    <img src="{{ url_for('streaming_chart') }}" alt="Streaming usage chart" />
+  </div>
+  <div>
+    <h3>Listening duration vs average anxiety</h3>
+    <img
+      src="{{ url_for('hours_vs_anxiety_chart') }}"
+      alt="Hours vs anxiety chart"
+    />
+  </div>
+</section>
 {% endblock %}

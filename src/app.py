@@ -90,8 +90,16 @@ def create_app(
 
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
-    def home() -> str:  # pragma: no cover (stub)
-        return render_template("home.html")
+    def home() -> str:
+        service = _build_service()
+        counts = service.get_streaming_service_counts()
+        total_respondents = sum(counts.values())
+        top_service = max(counts, key=counts.get) if counts else "N/A"
+        return render_template(
+            "home.html",
+            total_respondents=total_respondents,
+            top_service=top_service,
+        )
 
     @app.route("/genre", methods=["GET", "POST"])
     def genre_insights() -> str:
