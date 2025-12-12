@@ -150,11 +150,20 @@ def create_app(
         """Build filter criteria from query parameters."""
         return FilterCriteria.from_request_args(request.args.to_dict(flat=True))
 
+    def _data_quality_snapshot() -> Dict[str, Any]:
+        """Collect raw/clean/rejected counts and reason leaderboard."""
+        manager = get_db_manager()
+        return {
+            "raw": manager.get_raw_row_count(),
+            "clean": manager.get_clean_row_count(),
+            "rejected": manager.get_rejected_row_count(),
+            "top_reasons": manager.get_top_rejection_reasons(limit=5),
+        }
+
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
     def home() -> str:
         service = _get_service()
-        manager = get_db_manager()
         criteria = _parse_filter_criteria()
         filter_options = service.get_filter_options()
         overview = service.get_overview(criteria)
@@ -181,12 +190,7 @@ def create_app(
             "top_genres": _chart_url("top_genres_chart"),
         }
 
-        data_quality = {
-            "raw": manager.get_raw_row_count(),
-            "clean": manager.get_clean_row_count(),
-            "rejected": manager.get_rejected_row_count(),
-            "top_reasons": manager.get_top_rejection_reasons(limit=5),
-        }
+        data_quality = _data_quality_snapshot()
 
         return render_template(
             "home.html",
@@ -201,6 +205,12 @@ def create_app(
             boolean_filters=BOOLEAN_FILTERS,
             hours_buckets=["<=1", "1-3", ">3"],
         )
+
+    @app.route("/data-quality", methods=["GET"])
+    def data_quality() -> str:
+        """Summarise staging vs cleaning counts for transparency."""
+        data_quality = _data_quality_snapshot()
+        return render_template("data_quality.html", data_quality=data_quality)
 
     @app.route("/genre", methods=["GET", "POST"])
     def genre_insights() -> str:

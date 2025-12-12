@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Data quality overview</h1>
+<p>
+  Counts below summarise the pipeline from raw CSV rows through cleaning.
+</p>
+
+<section class="data-quality-panel">
+  <div class="dq-cards">
+    <div class="stat-card">
+      <h3>Raw rows</h3>
+      <p>{{ data_quality.raw }}</p>
+    </div>
+    <div class="stat-card">
+      <h3>Cleaned rows</h3>
+      <p>{{ data_quality.clean }}</p>
+    </div>
+    <div class="stat-card">
+      <h3>Rejected rows</h3>
+      <p>{{ data_quality.rejected }}</p>
+    </div>
+  </div>
+  <div class="rejection-list">
+    <h3>Top rejection reasons</h3>
+    <ul>
+      {% for reason, count in data_quality.top_reasons %}
+      <li>{{ reason }} — {{ count }}</li>
+      {% else %}
+      <li>No rejected rows recorded.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}
