@@ -256,18 +256,25 @@ class AnalysisEngine:
 
     def get_count_by_streaming_service(self) -> Dict[str, int]:
         """
-        Count the number of respondents using each streaming service.
+        Count how many respondents use each primary streaming service.
 
         Returns
         -------
         Dict[str, int]
-            A dictionary mapping streaming service names to user counts.
+            Mapping from service name (e.g. "Spotify") to count.
+
+        Notes
+        -----
+        This implementation runs in O(n) time for n responses. If needed
+        for performance, it could later be refactored to use an internal
+        cache for O(1) average-time lookups, but simplicity is preferred
+        until profiling indicates otherwise.
         """
-        service_counts: Dict[str, int] = {}
+        counts: Dict[str, int] = {}
         for response in self.responses:
-            service = response.primary_streaming_service.strip().lower()
-            service_counts[service] = service_counts.get(service, 0) + 1
-        return service_counts
+            service = response.primary_streaming_service
+            counts[service] = counts.get(service, 0) + 1
+        return counts
 
     def get_users_with_insomnia_score(self, threshold: int) -> List[SurveyResponse]:
         raise NotImplementedError
