@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List
 
 from src.database import DatabaseManager
-from src.filters import FilterCriteria
+from src.filters import AGE_GROUP_RULES, FilterCriteria
 from src.logging_utils import log_action
 from src.models import AnalysisEngine, SurveyResponse
 
@@ -178,3 +178,16 @@ class InsightsService:
         responses = self._get_responses_for(criteria)
         engine = self._get_engine_for(responses)
         return engine.get_factor_means(factor, metric, responses)
+
+    @log_action("GET_FILTER_OPTIONS")
+    def get_filter_options(self) -> Dict[str, List[str]]:
+        """Return dropdown options for the dashboard filters."""
+        services = self.db_manager.get_distinct_streaming_services()
+        genres = self.db_manager.get_distinct_fav_genres()
+        effects = self.db_manager.get_distinct_music_effects()
+        return {
+            "streaming_services": services,
+            "genres": genres,
+            "music_effects": effects,
+            "age_groups": list(AGE_GROUP_RULES.keys()),
+        }
