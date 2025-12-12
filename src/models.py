@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar, Dict, List, Optional
 
+from src.filters import AGE_GROUP_RULES
+
 
 # --- Frequency mapping helper ------------------------------------------------
 
@@ -212,6 +214,43 @@ class AnalysisEngine:
             value = getattr(response, attr)
             distribution[value] = distribution.get(value, 0) + 1
         return distribution
+
+    def get_age_group_means(
+        self,
+        responses: List[SurveyResponse] | None = None,
+    ) -> Dict[str, Dict[str, float]]:
+        """Compute mean scores per predefined age group."""
+        dataset = self._resolve_dataset(responses)
+        grouped: Dict[str, Dict[str, List[int]]] = {}
+        for response in dataset:
+            group = self._determine_age_group(response.age)
+            if group is None:
+                continue
+            bucket = grouped.setdefault(group, {metric: [] for metric in self.METRIC_FIELDS})
+            for metric, attr in self.METRIC_FIELDS.items():
+                bucket[metric].append(getattr(response, attr))
+
+        ordered: Dict[str, Dict[str, float]] = {}
+        for group_label in AGE_GROUP_RULES.keys():
+            values = grouped.get(group_label)
+            if not values:
+                continue
+            ordered[group_label] = {
+                metric: (sum(scores) / len(scores) if scores else 0.0)
+                for metric, scores in values.items()
+            }
+        return ordered
+
+    @staticmethod
+    def _determine_age_group(age: int) -> str | None:
+        """Return the configured age group label for a numeric age."""
+        for label, (min_age, max_age) in AGE_GROUP_RULES.items():
+            if min_age is not None and age < min_age:
+                continue
+            if max_age is not None and age > max_age:
+                continue
+            return label
+        return None
 
     def get_average_anxiety_by_genre(self, genre: str) -> Optional[float]:
         """

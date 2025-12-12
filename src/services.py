@@ -96,6 +96,16 @@ class InsightsService:
             "mean_scores": mean_scores,
         }
 
+    @log_action("GET_AGE_GROUP_MEANS")
+    def get_age_group_means(
+        self,
+        criteria: FilterCriteria | None = None,
+    ) -> Dict[str, Dict[str, float]]:
+        """Return mean mental-health scores per age bucket."""
+        responses = self._get_responses_for(criteria)
+        engine = self._get_engine_for(responses)
+        return engine.get_age_group_means(responses)
+
     def _compute_mean_scores(self, responses: List[SurveyResponse]) -> Dict[str, float]:
         """Compute average anxiety/depression/insomnia/OCD scores."""
         if not responses:

@@ -13,16 +13,9 @@ import sqlite3
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from src.filters import FilterCriteria
+from src.filters import AGE_GROUP_RULES, FilterCriteria
 from src.models import SurveyResponse
 
-AGE_GROUP_RULES: dict[str, tuple[int | None, int | None]] = {
-    "<18": (None, 17),
-    "18-24": (18, 24),
-    "25-34": (25, 34),
-    "35-44": (35, 44),
-    "45+": (45, None),
-}
 
 
 @dataclass

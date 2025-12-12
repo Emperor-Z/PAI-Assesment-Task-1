@@ -7,6 +7,13 @@ from typing import Mapping
 
 
 Boolean = bool | None
+AGE_GROUP_RULES: dict[str, tuple[int | None, int | None]] = {
+    "<18": (None, 17),
+    "18-24": (18, 24),
+    "25-34": (25, 34),
+    "35-44": (35, 44),
+    "45+": (45, None),
+}
 
 
 @dataclass(frozen=True)
