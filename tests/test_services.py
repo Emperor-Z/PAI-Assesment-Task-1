@@ -165,3 +165,11 @@ class TestInsightsService(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.service.get_factor_means("unknown_factor", "anxiety")
+
+    def test_get_filter_options(self) -> None:
+        """Filter options should pull distinct values and static age groups."""
+        options = self.service.get_filter_options()
+        self.assertIn("Spotify", options["streaming_services"])
+        self.assertIn("Lofi", options["genres"])
+        self.assertIn("Improve", options["music_effects"])
+        self.assertIn("18-24", options["age_groups"])
