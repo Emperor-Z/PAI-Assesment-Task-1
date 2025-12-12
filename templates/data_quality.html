@@ -31,4 +31,16 @@
     </ul>
   </div>
 </section>
+
+<section class="cleaning-rules">
+  <h2>Cleaning rules</h2>
+  <ul>
+    {% for rule in cleaning_rules %}
+    <li>{{ rule }}</li>
+    {% endfor %}
+  </ul>
+  <p>
+    Need to audit rejected entries? <a href="{{ url_for('export_rejected_rows') }}">Download rejected rows CSV</a>.
+  </p>
+</section>
 {% endblock %}

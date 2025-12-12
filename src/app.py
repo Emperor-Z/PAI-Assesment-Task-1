@@ -228,7 +228,17 @@ def create_app(
     def data_quality() -> str:
         """Summarise staging vs cleaning counts for transparency."""
         data_quality = _data_quality_snapshot()
-        return render_template("data_quality.html", data_quality=data_quality)
+        cleaning_rules = [
+            "Rows missing Age, Hours per day, or any mental health score are rejected.",
+            "Boolean fields (While working, Instrumentalist, etc.) must be strict yes/no.",
+            "Score columns must be numeric integers between 0 and 10.",
+            "CSV rows are preserved verbatim in Raw staging for auditing.",
+        ]
+        return render_template(
+            "data_quality.html",
+            data_quality=data_quality,
+            cleaning_rules=cleaning_rules,
+        )
 
     @app.route("/health-impact", methods=["GET"])
     def health_impact() -> str:
@@ -450,6 +460,31 @@ def create_app(
         stats = service.get_mean_scores_by_hours_bucket(filters=criteria, min_n=min_n)
         png = render_hours_vs_scores_chart(stats)
         return Response(png, mimetype="image/png")
+
+    @app.route("/export/rejected.csv", methods=["GET"])
+    def export_rejected_rows() -> Response:
+        """Download rejected rows with reasons and raw payload."""
+        manager = get_db_manager()
+        cursor = manager.connection.cursor()
+        cursor.execute(
+            """
+            SELECT reason, raw_row_id, raw_payload
+            FROM RejectedRows
+            ORDER BY id ASC
+            """
+        )
+        rows = cursor.fetchall()
+        lines = ["reason,raw_row_id,raw_payload"]
+        for row in rows:
+            reason = (row["reason"] or "").replace('"', '""')
+            raw_row_id = row["raw_row_id"] if row["raw_row_id"] is not None else ""
+            payload = (row["raw_payload"] or "").replace('"', '""')
+            lines.append(f'"{reason}",{raw_row_id},"{payload}"')
+        csv_data = "\n".join(lines) + "\n"
+        response = make_response(csv_data)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = "attachment; filename=rejected_rows.csv"
+        return response
 
     @app.route("/export/streaming-csv", methods=["GET"])
     def export_streaming_csv() -> Any:
