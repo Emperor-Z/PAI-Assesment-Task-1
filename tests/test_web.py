@@ -179,6 +179,16 @@ class TestWebApp(unittest.TestCase):
             html = response.data.decode("utf-8")
             self.assertIn("Listening duration vs average anxiety", html)
 
+    def test_streaming_chart_endpoint_returns_png(self) -> None:
+        response = self.client.get("/charts/streaming.png")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("image/png", response.headers.get("Content-Type", ""))
+
+    def test_hours_vs_anxiety_chart_endpoint_returns_png(self) -> None:
+        response = self.client.get("/charts/hours-vs-anxiety.png")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("image/png", response.headers.get("Content-Type", ""))
+
     def test_export_streaming_counts_as_csv(self) -> None:
         """
         GIVEN the web app
