@@ -209,6 +209,12 @@ class TestWebApp(unittest.TestCase):
         self.assertIn("image/png", response.headers.get("Content-Type", ""))
         self.assertGreater(len(response.data), 100)
 
+    def test_top_genres_chart_endpoint_returns_png(self) -> None:
+        response = self.client.get("/charts/top-genres.png")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("image/png", response.headers.get("Content-Type", ""))
+        self.assertGreater(len(response.data), 100)
+
     def test_export_streaming_counts_as_csv(self) -> None:
         """
         GIVEN the web app
