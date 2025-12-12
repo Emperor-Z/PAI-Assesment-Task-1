@@ -191,6 +191,19 @@ class TestDatabaseManager(unittest.TestCase):
         decoded = json.loads(stored_row[0])
         self.assertEqual(raw_row, decoded)
 
+    def test_get_all_raw_responses_returns_decoded_rows(self) -> None:
+        """
+        Raw rows should be returned as dictionaries for the cleaning step.
+        """
+        raw_row = {"Age": "21", "Primary streaming service": "Spotify"}
+        second_row = {"Age": "", "Primary streaming service": "YouTube"}
+        self.db_manager.insert_raw_response(raw_row, error=None)
+        self.db_manager.insert_raw_response(second_row, error="bad age")
+
+        rows = self.db_manager.get_all_raw_responses()
+        self.assertEqual(2, len(rows))
+        self.assertIn(raw_row, rows)
+
     def test_get_respondent_by_id_returns_correct_row(self) -> None:
         """
         GIVEN an inserted SurveyResponse
