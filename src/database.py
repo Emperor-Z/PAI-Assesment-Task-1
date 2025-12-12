@@ -172,3 +172,21 @@ class DatabaseManager:
             (respondent_id,),
         )
         return cursor.fetchone()
+
+    def update_primary_streaming_service(self, respondent_id: int, new_service: str) -> None:
+        """
+        Update the primary streaming service for a respondent.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            UPDATE Respondents
+            SET primary_streaming_service = ?
+            WHERE id = ?
+            """,
+            (new_service, respondent_id),
+        )
+        self.connection.commit()
