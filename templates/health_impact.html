@@ -55,6 +55,15 @@
         <option value="{{ bucket }}" {% if selected_filters.get('hours_bucket') == bucket %}selected{% endif %}>{{ bucket }}</option>
         {% endfor %}
       </select>
+
+      <label for="min_n">Group minimum (min_n)</label>
+      <select id="min_n" name="min_n">
+        {% for option in min_n_options %}
+        <option value="{{ option }}" {% if selected_min_n == option %}selected{% endif %}>
+          {{ option }}
+        </option>
+        {% endfor %}
+      </select>
     </div>
     <div class="filter-actions">
       <button type="submit">Apply filters</button>
@@ -67,14 +76,23 @@
   <div class="chart-card">
     <h3>Genre vs anxiety</h3>
     <img src="{{ charts.genres }}" alt="Genre vs anxiety chart" />
+    {% if not genre_stats %}
+    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
+    {% endif %}
   </div>
   <div class="chart-card">
     <h3>Music effects vs anxiety</h3>
     <img src="{{ charts.effects }}" alt="Effects vs anxiety chart" />
+    {% if not effect_stats %}
+    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
+    {% endif %}
   </div>
   <div class="chart-card wide">
     <h3>Hours vs mental health scores</h3>
     <img src="{{ charts.hours }}" alt="Hours vs mental health chart" />
+    {% if not hours_stats %}
+    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
+    {% endif %}
   </div>
 </section>
 
@@ -103,7 +121,7 @@
           <td>{{ "%.1f"|format(row.ocd_mean) }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6">No genre groups with sufficient respondents.</td></tr>
+        <tr><td colspan="6">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -132,7 +150,7 @@
           <td>{{ "%.1f"|format(row.ocd_mean) }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6">No effect groups with sufficient respondents.</td></tr>
+        <tr><td colspan="6">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -164,7 +182,7 @@
           <td>{{ "%.1f"|format(row.ocd_mean) }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6">No hours buckets with sufficient respondents.</td></tr>
+        <tr><td colspan="6">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</td></tr>
         {% endfor %}
       </tbody>
     </table>

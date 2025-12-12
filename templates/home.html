@@ -73,6 +73,15 @@
         </option>
         {% endfor %}
       </select>
+
+      <label for="min_n">Group minimum (min_n)</label>
+      <select id="min_n" name="min_n">
+        {% for option in min_n_options %}
+        <option value="{{ option }}" {% if selected_min_n == option %}selected{% endif %}>
+          {{ option }}
+        </option>
+        {% endfor %}
+      </select>
     </div>
     <div class="filter-actions">
       <button type="submit">Apply filters</button>

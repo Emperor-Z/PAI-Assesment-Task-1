@@ -163,11 +163,24 @@ def create_app(
             "top_reasons": manager.get_top_rejection_reasons(limit=5),
         }
 
+    def _get_min_n(default: int = 5) -> int:
+        """Validate min_n query parameter."""
+        allowed = [1, 3, 5, 10]
+        value = request.args.get("min_n")
+        if value is None:
+            return default
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return default
+        return parsed if parsed in allowed else default
+
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
     def home() -> str:
         service = _get_service()
         criteria = _parse_filter_criteria()
+        min_n = _get_min_n()
         filter_options = service.get_filter_options()
         overview = service.get_overview(criteria)
         streaming_counts = overview.get("streaming_counts", {})
@@ -207,6 +220,8 @@ def create_app(
             data_quality=data_quality,
             boolean_filters=BOOLEAN_FILTERS,
             hours_buckets=["<=1", "1-3", ">3"],
+            min_n_options=[1, 3, 5, 10],
+            selected_min_n=min_n,
         )
 
     @app.route("/data-quality", methods=["GET"])
@@ -220,10 +235,11 @@ def create_app(
         """Render focused health impact analytics and charts."""
         service = _get_service()
         criteria = _parse_filter_criteria()
+        min_n = _get_min_n()
         filter_options = service.get_filter_options()
-        genre_stats = service.get_mean_scores_by_genre(filters=criteria)
-        effect_stats = service.get_mean_scores_by_music_effects(filters=criteria)
-        hours_stats = service.get_mean_scores_by_hours_bucket(filters=criteria)
+        genre_stats = service.get_mean_scores_by_genre(filters=criteria, min_n=min_n)
+        effect_stats = service.get_mean_scores_by_music_effects(filters=criteria, min_n=min_n)
+        hours_stats = service.get_mean_scores_by_hours_bucket(filters=criteria, min_n=min_n)
         correlations = service.get_correlations_hours_vs_scores(filters=criteria)
         selected_filters = request.args.to_dict(flat=True)
         query_string = request.query_string.decode("utf-8")
@@ -249,6 +265,8 @@ def create_app(
             selected_filters=selected_filters,
             boolean_filters=BOOLEAN_FILTERS,
             hours_buckets=["<=1", "1-3", ">3"],
+            min_n_options=[1, 3, 5, 10],
+            selected_min_n=min_n,
         )
 
     @app.route("/genre", methods=["GET", "POST"])
@@ -339,7 +357,8 @@ def create_app(
     def genre_vs_anxiety_chart() -> Response:
         service = _get_service()
         criteria = _parse_filter_criteria()
-        stats = service.get_mean_scores_by_genre(filters=criteria)
+        min_n = _get_min_n()
+        stats = service.get_mean_scores_by_genre(filters=criteria, min_n=min_n)
         png = render_genre_vs_anxiety_chart(stats)
         return Response(png, mimetype="image/png")
 
@@ -347,7 +366,8 @@ def create_app(
     def effects_vs_anxiety_chart() -> Response:
         service = _get_service()
         criteria = _parse_filter_criteria()
-        stats = service.get_mean_scores_by_music_effects(filters=criteria)
+        min_n = _get_min_n()
+        stats = service.get_mean_scores_by_music_effects(filters=criteria, min_n=min_n)
         png = render_effects_vs_anxiety_chart(stats)
         return Response(png, mimetype="image/png")
 
@@ -355,7 +375,8 @@ def create_app(
     def hours_vs_scores_chart() -> Response:
         service = _get_service()
         criteria = _parse_filter_criteria()
-        stats = service.get_mean_scores_by_hours_bucket(filters=criteria)
+        min_n = _get_min_n()
+        stats = service.get_mean_scores_by_hours_bucket(filters=criteria, min_n=min_n)
         png = render_hours_vs_scores_chart(stats)
         return Response(png, mimetype="image/png")
 
