@@ -93,20 +93,126 @@ class TestWebApp(unittest.TestCase):
 
     def test_genre_form_submission_returns_stats(self) -> None:
         """
-        GIVEN a known dataset with 'Lofi' as a favourite genre
-        WHEN posting 'Lofi' to the genre insights route
-        THEN the response should include that genre and show average values.
+        GIVEN a dataset with known genres
+        WHEN posting to the genre insights route
+        THEN the response should include respondent counts and means.
         """
-        response = self.client.post(
-            "/genre",
-            data={"genre": "Lofi"},
-            follow_redirects=True,
-        )
-        self.assertEqual(200, response.status_code)
-        html = response.data.decode("utf-8")
-        self.assertIn("Lofi", html)
-        self.assertIn("Average anxiety", html)
-        self.assertIn("Average depression", html)
+        import csv
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = os.path.join(tmpdir, "genres.csv")
+            fieldnames = [
+                "Timestamp",
+                "Age",
+                "Primary streaming service",
+                "Hours per day",
+                "While working",
+                "Instrumentalist",
+                "Composer",
+                "Fav genre",
+                "Exploratory",
+                "Foreign languages",
+                "BPM",
+                "Frequency [Pop]",
+                "Anxiety",
+                "Depression",
+                "Insomnia",
+                "OCD",
+                "Music effects",
+            ]
+            with open(csv_path, "w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "Timestamp": "2022-08-27",
+                        "Age": "21",
+                        "Primary streaming service": "Spotify",
+                        "Hours per day": "3.5",
+                        "While working": "Yes",
+                        "Instrumentalist": "No",
+                        "Composer": "No",
+                        "Fav genre": "Lofi",
+                        "Exploratory": "Yes",
+                        "Foreign languages": "No",
+                        "BPM": "90",
+                        "Frequency [Pop]": "Sometimes",
+                        "Anxiety": "4",
+                        "Depression": "3",
+                        "Insomnia": "2",
+                        "OCD": "1",
+                        "Music effects": "Helps",
+                    }
+                )
+            test_app = create_app(testing=True, csv_path=csv_path, db_path=":memory:")
+            client = test_app.test_client()
+            response = client.post(
+                "/genre",
+                data={"genre": "Lofi", "metric": "anxiety", "min_n": "1"},
+                follow_redirects=True,
+            )
+            self.assertEqual(200, response.status_code)
+            html = response.data.decode("utf-8")
+            self.assertIn("Lofi", html)
+            self.assertIn("Respondents:", html)
+            self.assertIn("Anxiety mean", html)
+
+    def test_genre_page_warns_when_min_n_high(self) -> None:
+        import csv
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = os.path.join(tmpdir, "genres.csv")
+            fieldnames = [
+                "Timestamp",
+                "Age",
+                "Primary streaming service",
+                "Hours per day",
+                "While working",
+                "Instrumentalist",
+                "Composer",
+                "Fav genre",
+                "Exploratory",
+                "Foreign languages",
+                "BPM",
+                "Frequency [Pop]",
+                "Anxiety",
+                "Depression",
+                "Insomnia",
+                "OCD",
+                "Music effects",
+            ]
+            with open(csv_path, "w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "Timestamp": "2022-08-27",
+                        "Age": "21",
+                        "Primary streaming service": "Spotify",
+                        "Hours per day": "3.5",
+                        "While working": "Yes",
+                        "Instrumentalist": "No",
+                        "Composer": "No",
+                        "Fav genre": "Lofi",
+                        "Exploratory": "Yes",
+                        "Foreign languages": "No",
+                        "BPM": "90",
+                        "Frequency [Pop]": "Sometimes",
+                        "Anxiety": "4",
+                        "Depression": "3",
+                        "Insomnia": "2",
+                        "OCD": "1",
+                        "Music effects": "Helps",
+                    }
+                )
+            test_app = create_app(testing=True, csv_path=csv_path, db_path=":memory:")
+            client = test_app.test_client()
+            response = client.get("/genre?genre=Lofi&min_n=5")
+            self.assertEqual(200, response.status_code)
+            html = response.data.decode("utf-8")
+            self.assertIn("min_n=5", html)
 
     def test_streaming_counts_page_renders_table(self) -> None:
         """
