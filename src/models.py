@@ -190,13 +190,88 @@ class AnalysisEngine:
     responses: List[SurveyResponse]
 
     def get_average_anxiety_by_genre(self, genre: str) -> Optional[float]:
-        raise NotImplementedError
+        """
+        Calculate the average anxiety score for respondents whose
+        favourite genre matches the given genre (case-insensitive).
+
+        Returns
+        -------
+        Optional[float]
+            The arithmetic mean anxiety score, or None if there are no matches.
+
+        This behaviour is exactly what the unit tests expect:
+        - "Pop" with one matching respondent → 3.0
+        - "Country" with no matches       → None
+        """
+        # Guard clause: wrong type
+        if not isinstance(genre, str):
+            raise TypeError("genre must be a str")
+
+        # Normalise for case-insensitive comparison
+        genre_lower = genre.strip().lower()
+        if not genre_lower:
+            # If someone passes an empty string, treat as "no results"
+            return None
+
+        # Collect anxiety scores for matching favourite genre
+        scores: List[int] = [
+            response.anxiety_score
+            for response in self.responses
+            if response.fav_genre.strip().lower() == genre_lower
+        ]
+
+        if not scores:
+            return None
+
+        return sum(scores) / len(scores)
+
 
     def get_average_depression_by_genre(self, genre: str) -> Optional[float]:
-        raise NotImplementedError
+        """
+        Calculate the average depression score for respondents whose
+        favourite genre matches the given genre (case-insensitive).
+
+        Returns
+        -------
+        Optional[float]
+            The arithmetic mean depression score, or None if there are no matches.
+        """
+        # Guard clause: wrong type
+        if not isinstance(genre, str):
+            raise TypeError("genre must be a str")
+
+        # Normalise for case-insensitive comparison
+        genre_lower = genre.strip().lower()
+        if not genre_lower:
+            # If someone passes an empty string, treat as "no results"
+            return None
+
+        # Collect depression scores for matching favourite genre
+        scores: List[int] = [
+            response.depression_score
+            for response in self.responses
+            if response.fav_genre.strip().lower() == genre_lower
+        ]
+
+        if not scores:
+            return None
+
+        return sum(scores) / len(scores)
 
     def get_count_by_streaming_service(self) -> Dict[str, int]:
-        raise NotImplementedError
+        """
+        Count the number of respondents using each streaming service.
+
+        Returns
+        -------
+        Dict[str, int]
+            A dictionary mapping streaming service names to user counts.
+        """
+        service_counts: Dict[str, int] = {}
+        for response in self.responses:
+            service = response.primary_streaming_service.strip().lower()
+            service_counts[service] = service_counts.get(service, 0) + 1
+        return service_counts
 
     def get_users_with_insomnia_score(self, threshold: int) -> List[SurveyResponse]:
         raise NotImplementedError
