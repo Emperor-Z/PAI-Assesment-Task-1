@@ -78,8 +78,18 @@ def create_app(
             stats: Dict[str, float] | None = None
             return render_template("genre.html", stats=stats)
 
-        # For now, treat POST the same as GET (placeholder).
-        return render_template("genre.html", stats=None)
+        genre = request.form.get("genre", "").strip()
+        stats = None
+        if genre:
+            service = _build_service()
+            service_stats = service.get_average_anxiety_and_depression_by_genre(genre)
+            stats = {
+                "genre": service_stats.get("genre", genre),
+                "avg_anxiety": service_stats.get("avg_anxiety", 0.0),
+                "avg_depression": service_stats.get("avg_depression", 0.0),
+            }
+
+        return render_template("genre.html", stats=stats)
 
 
     @app.route("/streaming", methods=["GET"])
