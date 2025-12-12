@@ -10,9 +10,12 @@ This module is responsible for:
 from __future__ import annotations
 
 import csv
-from typing import Dict, List
+from typing import Dict, List, TYPE_CHECKING
 
 from src.models import SurveyResponse, map_frequency_to_numeric
+
+if TYPE_CHECKING:
+    from src.database import DatabaseManager
 
 
 def _parse_int_required(value: str, field_name: str) -> int:
@@ -93,3 +96,17 @@ def load_survey_responses_from_csv(csv_path: str) -> List[SurveyResponse]:
         for row in reader:
             responses.append(_row_to_survey_response(row))
     return responses
+
+
+def ingest_csv_into_database(csv_path: str, db_manager: "DatabaseManager") -> int:
+    """
+    Load SurveyResponse objects from CSV and insert them into the database.
+
+    Returns the number of inserted respondents.
+    """
+    responses = load_survey_responses_from_csv(csv_path)
+    inserted = 0
+    for response in responses:
+        db_manager.insert_survey_response(response)
+        inserted += 1
+    return inserted

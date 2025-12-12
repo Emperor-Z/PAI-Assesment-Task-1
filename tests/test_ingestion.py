@@ -8,7 +8,8 @@ from CSV into SurveyResponse domain objects.
 import os
 import unittest
 
-from src.ingestion import load_survey_responses_from_csv  # type: ignore[import]
+from src.database import DatabaseManager  # type: ignore[import]
+from src.ingestion import ingest_csv_into_database, load_survey_responses_from_csv  # type: ignore[import]
 from src.models import SurveyResponse  # type: ignore[import]
 
 
@@ -72,3 +73,19 @@ class TestIngestion(unittest.TestCase):
         missing_path = os.path.join(self.fixtures_dir, "does_not_exist.csv")
         with self.assertRaises(FileNotFoundError):
             load_survey_responses_from_csv(missing_path)
+
+    def test_ingest_csv_into_database(self) -> None:
+        """
+        GIVEN a sample CSV and an in-memory DatabaseManager
+        WHEN ingest_csv_into_database is called
+        THEN the number of inserted respondents should match the CSV rows.
+        """
+        db_manager = DatabaseManager(":memory:")
+        db_manager.connect()
+        db_manager.create_tables()
+        try:
+            inserted = ingest_csv_into_database(self.sample_csv, db_manager)
+            self.assertEqual(2, inserted)
+            self.assertEqual(2, db_manager.get_respondent_count())
+        finally:
+            db_manager.close()
