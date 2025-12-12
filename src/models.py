@@ -188,6 +188,13 @@ class AnalysisEngine:
         "insomnia": "insomnia_score",
         "ocd": "ocd_score",
     }
+    FACTOR_FIELDS: ClassVar[Dict[str, str]] = {
+        "while_working": "while_working",
+        "instrumentalist": "instrumentalist",
+        "composer": "composer",
+        "exploratory": "exploratory",
+        "foreign_languages": "foreign_languages",
+    }
 
     def _resolve_dataset(self, responses: List[SurveyResponse] | None) -> List[SurveyResponse]:
         """Return either the provided dataset or the engine's default list."""
@@ -200,6 +207,14 @@ class AnalysisEngine:
         if key not in cls.METRIC_FIELDS:
             raise ValueError(f"Unknown metric: {metric}")
         return cls.METRIC_FIELDS[key]
+
+    @classmethod
+    def _factor_attr(cls, factor: str) -> str:
+        """Map a factor name to a SurveyResponse attribute."""
+        key = factor.strip().lower()
+        if key not in cls.FACTOR_FIELDS:
+            raise ValueError(f"Unknown factor: {factor}")
+        return cls.FACTOR_FIELDS[key]
 
     def get_score_distribution(
         self,
@@ -293,6 +308,28 @@ class AnalysisEngine:
                 continue
             means.append((genre, sum(scores) / len(scores)))
         return means
+
+    def get_factor_means(
+        self,
+        factor: str,
+        metric: str,
+        responses: List[SurveyResponse] | None = None,
+    ) -> Dict[bool, float]:
+        """Return mean metric scores grouped by boolean factor."""
+        dataset = self._resolve_dataset(responses)
+        metric_attr = self._metric_attr(metric)
+        factor_attr = self._factor_attr(factor)
+
+        grouped_scores: Dict[bool, List[int]] = {True: [], False: []}
+        for response in dataset:
+            flag = bool(getattr(response, factor_attr))
+            grouped_scores[flag].append(getattr(response, metric_attr))
+
+        results: Dict[bool, float] = {}
+        for flag, scores in grouped_scores.items():
+            if scores:
+                results[flag] = sum(scores) / len(scores)
+        return results
 
     @staticmethod
     def _determine_age_group(age: int) -> str | None:

@@ -166,3 +166,15 @@ class InsightsService:
         responses = self._get_responses_for(criteria)
         engine = self._get_engine_for(responses)
         return engine.get_genre_means(metric, responses, top_n=top_n)
+
+    @log_action("GET_FACTOR_MEANS")
+    def get_factor_means(
+        self,
+        factor: str,
+        metric: str,
+        criteria: FilterCriteria | None = None,
+    ) -> Dict[bool, float]:
+        """Return mean metric scores split by boolean factor."""
+        responses = self._get_responses_for(criteria)
+        engine = self._get_engine_for(responses)
+        return engine.get_factor_means(factor, metric, responses)
