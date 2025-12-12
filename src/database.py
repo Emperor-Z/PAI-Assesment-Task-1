@@ -13,7 +13,16 @@ import sqlite3
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+from src.filters import FilterCriteria
 from src.models import SurveyResponse
+
+AGE_GROUP_RULES: dict[str, tuple[int | None, int | None]] = {
+    "<18": (None, 17),
+    "18-24": (18, 24),
+    "25-34": (25, 34),
+    "35-44": (35, 44),
+    "45+": (45, None),
+}
 
 
 @dataclass
@@ -55,7 +64,18 @@ class DatabaseManager:
             CREATE TABLE IF NOT EXISTS Respondents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 age INTEGER NOT NULL,
-                primary_streaming_service TEXT NOT NULL
+                primary_streaming_service TEXT NOT NULL,
+                timestamp TEXT NOT NULL,
+                hours_per_day REAL NOT NULL,
+                while_working INTEGER NOT NULL,
+                instrumentalist INTEGER NOT NULL,
+                composer INTEGER NOT NULL,
+                fav_genre TEXT NOT NULL,
+                exploratory INTEGER NOT NULL,
+                foreign_languages INTEGER NOT NULL,
+                bpm INTEGER,
+                music_effects TEXT NOT NULL,
+                genre_frequencies TEXT NOT NULL
             )
             """
         )
@@ -82,6 +102,7 @@ class DatabaseManager:
             """
         )
         self.connection.commit()
+        self._ensure_respondent_columns()
 
     def close(self) -> None:
         """
@@ -104,10 +125,38 @@ class DatabaseManager:
         cursor = self.connection.cursor()
         cursor.execute(
             """
-            INSERT INTO Respondents (age, primary_streaming_service)
-            VALUES (?, ?)
+            INSERT INTO Respondents (
+                age,
+                primary_streaming_service,
+                timestamp,
+                hours_per_day,
+                while_working,
+                instrumentalist,
+                composer,
+                fav_genre,
+                exploratory,
+                foreign_languages,
+                bpm,
+                music_effects,
+                genre_frequencies
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (response.age, response.primary_streaming_service),
+            (
+                response.age,
+                response.primary_streaming_service,
+                response.timestamp,
+                response.hours_per_day,
+                int(response.while_working),
+                int(response.instrumentalist),
+                int(response.composer),
+                response.fav_genre,
+                int(response.exploratory),
+                int(response.foreign_languages),
+                response.bpm,
+                response.music_effects,
+                json.dumps(response.genre_frequencies),
+            ),
         )
         respondent_id = cursor.lastrowid
         cursor.execute(
@@ -260,8 +309,19 @@ class DatabaseManager:
         cursor.execute(
             """
             SELECT
+                Respondents.timestamp,
                 Respondents.age,
                 Respondents.primary_streaming_service,
+                Respondents.hours_per_day,
+                Respondents.while_working,
+                Respondents.instrumentalist,
+                Respondents.composer,
+                Respondents.fav_genre,
+                Respondents.exploratory,
+                Respondents.foreign_languages,
+                Respondents.bpm,
+                Respondents.music_effects,
+                Respondents.genre_frequencies,
                 HealthStats.anxiety,
                 HealthStats.depression,
                 HealthStats.insomnia,
@@ -273,26 +333,174 @@ class DatabaseManager:
             """
         )
         responses: List[SurveyResponse] = []
-        for age, service, anxiety, depression, insomnia, ocd in cursor.fetchall():
-            responses.append(
-                SurveyResponse(
-                    timestamp="",
-                    age=age,
-                    primary_streaming_service=service,
-                    hours_per_day=0.0,
-                    while_working=False,
-                    instrumentalist=False,
-                    composer=False,
-                    fav_genre="",
-                    exploratory=False,
-                    foreign_languages=False,
-                    bpm=None,
-                    anxiety_score=anxiety,
-                    depression_score=depression,
-                    insomnia_score=insomnia,
-                    ocd_score=ocd,
-                    music_effects="",
-                    genre_frequencies={},
-                )
-            )
+        for row in cursor.fetchall():
+            responses.append(self._row_to_survey_response(row))
         return responses
+
+    def get_clean_responses_filtered(
+        self,
+        criteria: FilterCriteria,
+        limit: int | None = None,
+    ) -> List[SurveyResponse]:
+        """
+        Fetch curated SurveyResponse records applying optional filters.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        if limit is not None:
+            if not isinstance(limit, int) or limit <= 0:
+                raise ValueError("limit must be a positive integer")
+
+        query = [
+            """
+            SELECT
+                Respondents.timestamp,
+                Respondents.age,
+                Respondents.primary_streaming_service,
+                Respondents.hours_per_day,
+                Respondents.while_working,
+                Respondents.instrumentalist,
+                Respondents.composer,
+                Respondents.fav_genre,
+                Respondents.exploratory,
+                Respondents.foreign_languages,
+                Respondents.bpm,
+                Respondents.music_effects,
+                Respondents.genre_frequencies,
+                HealthStats.anxiety,
+                HealthStats.depression,
+                HealthStats.insomnia,
+                HealthStats.ocd
+            FROM Respondents
+            INNER JOIN HealthStats
+                ON Respondents.id = HealthStats.respondent_id
+            """
+        ]
+        where_clauses: List[str] = []
+        params: List[object] = []
+
+        if criteria.age_group:
+            bounds = AGE_GROUP_RULES.get(criteria.age_group)
+            if bounds is not None:
+                min_age, max_age = bounds
+                if min_age is not None:
+                    where_clauses.append("Respondents.age >= ?")
+                    params.append(min_age)
+                if max_age is not None:
+                    where_clauses.append("Respondents.age <= ?")
+                    params.append(max_age)
+
+        if criteria.streaming_service:
+            where_clauses.append("Respondents.primary_streaming_service = ?")
+            params.append(criteria.streaming_service)
+
+        if criteria.favourite_genre:
+            where_clauses.append("Respondents.fav_genre = ?")
+            params.append(criteria.favourite_genre)
+
+        if criteria.music_effects:
+            where_clauses.append("Respondents.music_effects = ?")
+            params.append(criteria.music_effects)
+
+        for attr in (
+            "while_working",
+            "instrumentalist",
+            "composer",
+            "exploratory",
+            "foreign_languages",
+        ):
+            value = getattr(criteria, attr)
+            if value is not None:
+                where_clauses.append(f"Respondents.{attr} = ?")
+                params.append(int(value))
+
+        if criteria.hours_bucket:
+            hours_clauses, hours_params = self._hours_bucket_filters(criteria.hours_bucket)
+            where_clauses.extend(hours_clauses)
+            params.extend(hours_params)
+
+        if where_clauses:
+            query.append("WHERE " + " AND ".join(where_clauses))
+
+        query.append("ORDER BY Respondents.id ASC")
+
+        if limit is not None:
+            query.append("LIMIT ?")
+            params.append(limit)
+
+        cursor = self.connection.cursor()
+        cursor.execute("\n".join(query), params)
+        rows = cursor.fetchall()
+        return [self._row_to_survey_response(row) for row in rows]
+
+    def _hours_bucket_filters(self, bucket: str) -> tuple[List[str], List[float]]:
+        """Translate an hours bucket into SQL clauses and parameters."""
+        if bucket == "<=1":
+            return (["Respondents.hours_per_day <= ?"], [1.0])
+        if bucket == "1-3":
+            return (
+                [
+                    "Respondents.hours_per_day > ?",
+                    "Respondents.hours_per_day <= ?",
+                ],
+                [1.0, 3.0],
+            )
+        if bucket == ">3":
+            return (["Respondents.hours_per_day > ?"], [3.0])
+        raise ValueError(f"Unknown hours bucket: {bucket}")
+
+    def _row_to_survey_response(self, row: sqlite3.Row) -> SurveyResponse:
+        """Convert a DB row into a SurveyResponse."""
+        genre_data = row["genre_frequencies"] or "{}"
+        frequencies = json.loads(genre_data)
+        return SurveyResponse(
+            timestamp=row["timestamp"],
+            age=row["age"],
+            primary_streaming_service=row["primary_streaming_service"],
+            hours_per_day=row["hours_per_day"],
+            while_working=bool(row["while_working"]),
+            instrumentalist=bool(row["instrumentalist"]),
+            composer=bool(row["composer"]),
+            fav_genre=row["fav_genre"],
+            exploratory=bool(row["exploratory"]),
+            foreign_languages=bool(row["foreign_languages"]),
+            bpm=row["bpm"],
+            anxiety_score=row["anxiety"],
+            depression_score=row["depression"],
+            insomnia_score=row["insomnia"],
+            ocd_score=row["ocd"],
+            music_effects=row["music_effects"],
+            genre_frequencies=frequencies,
+        )
+
+    def _ensure_respondent_columns(self) -> None:
+        """Add any missing columns introduced after the initial schema."""
+        if self.connection is None:
+            return
+        columns = {
+            "timestamp": "TEXT NOT NULL DEFAULT ''",
+            "hours_per_day": "REAL NOT NULL DEFAULT 0",
+            "while_working": "INTEGER NOT NULL DEFAULT 0",
+            "instrumentalist": "INTEGER NOT NULL DEFAULT 0",
+            "composer": "INTEGER NOT NULL DEFAULT 0",
+            "fav_genre": "TEXT NOT NULL DEFAULT ''",
+            "exploratory": "INTEGER NOT NULL DEFAULT 0",
+            "foreign_languages": "INTEGER NOT NULL DEFAULT 0",
+            "bpm": "INTEGER",
+            "music_effects": "TEXT NOT NULL DEFAULT ''",
+            "genre_frequencies": "TEXT NOT NULL DEFAULT '{}'",
+        }
+        for name, definition in columns.items():
+            self._ensure_column_exists("Respondents", name, definition)
+
+    def _ensure_column_exists(self, table: str, column: str, definition: str) -> None:
+        """Ensure a specific column exists on a table, adding it if required."""
+        if self.connection is None:
+            return
+        cursor = self.connection.cursor()
+        cursor.execute(f"PRAGMA table_info({table})")
+        existing = {row[1] for row in cursor.fetchall()}
+        if column not in existing:
+            cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+            self.connection.commit()
