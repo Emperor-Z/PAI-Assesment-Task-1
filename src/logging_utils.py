@@ -47,8 +47,6 @@ def configure_logger(log_path: str) -> logging.Logger:
 def log_action(action_name: str) -> Callable[[F], F]:
     """
     Decorator that logs each call to the wrapped function with the given action name.
-
-    Stub implementation; tests will drive the real behaviour.
     """
 
     def decorator(func: F) -> F:
