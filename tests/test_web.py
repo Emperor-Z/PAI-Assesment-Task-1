@@ -78,6 +78,13 @@ class TestWebApp(unittest.TestCase):
         self.assertIn("Data quality overview", html)
         self.assertIn("Raw rows", html)
         self.assertIn("Top rejection reasons", html)
+        self.assertIn("Cleaning rules", html)
+
+    def test_rejected_rows_export_returns_csv(self) -> None:
+        response = self.client.get("/export/rejected.csv")
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("text/csv; charset=utf-8", response.headers.get("Content-Type"))
+        self.assertIn("reason", response.data.decode("utf-8").splitlines()[0])
 
     def test_genre_page_shows_form(self) -> None:
         """
