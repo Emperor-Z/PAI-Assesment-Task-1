@@ -6,6 +6,10 @@ Exposes a simple HTML interface over the InsightsService.
 
 from __future__ import annotations
 
+import csv
+import io
+import json
+import logging
 import os
 from typing import Any, Dict, List, Tuple
 
@@ -33,6 +37,34 @@ BOOLEAN_FILTERS: List[Tuple[str, str]] = [
     ("instrumentalist", "Instrumentalist"),
     ("composer", "Composer"),
 ]
+EXPORTABLE_COLUMNS: Dict[str, str] = {
+    "timestamp": "timestamp",
+    "age": "age",
+    "primary_streaming_service": "primary_streaming_service",
+    "hours_per_day": "hours_per_day",
+    "while_working": "while_working",
+    "instrumentalist": "instrumentalist",
+    "composer": "composer",
+    "fav_genre": "fav_genre",
+    "exploratory": "exploratory",
+    "foreign_languages": "foreign_languages",
+    "bpm": "bpm",
+    "anxiety_score": "anxiety_score",
+    "depression_score": "depression_score",
+    "insomnia_score": "insomnia_score",
+    "ocd_score": "ocd_score",
+    "music_effects": "music_effects",
+    "hours_per_day_bucket": "hours_per_day",  # calculated bucket
+}
+
+
+def _hours_bucket_value(hours: float) -> str:
+    """Helper to convert numeric hours into the dashboard buckets."""
+    if hours <= 1:
+        return "<=1"
+    if hours <= 3:
+        return "1-3"
+    return ">3"
 
 
 def create_app(
@@ -251,6 +283,68 @@ def create_app(
         response = make_response(csv_content)
         response.headers["Content-Type"] = "text/csv; charset=utf-8"
         response.headers["Content-Disposition"] = "attachment; filename=streaming_counts.csv"
+        return response
+
+    @app.route("/export/data.csv", methods=["GET"])
+    def export_filtered_data() -> Response:
+        """Export filtered curated responses with configurable columns."""
+        service = _build_service()
+        criteria = _parse_filter_criteria()
+        columns_param = request.args.get("columns", "")
+        if columns_param:
+            requested_columns = [col.strip() for col in columns_param.split(",") if col.strip()]
+        else:
+            requested_columns = list(EXPORTABLE_COLUMNS.keys())
+
+        if not requested_columns:
+            return Response("At least one column must be selected", status=400)
+
+        invalid_columns = [col for col in requested_columns if col not in EXPORTABLE_COLUMNS]
+        if invalid_columns:
+            return Response(f"Invalid columns: {', '.join(invalid_columns)}", status=400)
+
+        limit_value = request.args.get("limit")
+        limit: int | None = None
+        if limit_value:
+            try:
+                limit = int(limit_value)
+            except ValueError:
+                return Response("limit must be an integer", status=400)
+            if limit <= 0 or limit > 5000:
+                return Response("limit must be between 1 and 5000", status=400)
+
+        responses = service.db_manager.get_clean_responses_filtered(criteria, limit=limit)
+
+        buffer = io.StringIO()
+        writer = csv.DictWriter(buffer, fieldnames=requested_columns)
+        writer.writeheader()
+        for response in responses:
+            row: Dict[str, Any] = {}
+            for column in requested_columns:
+                attr = EXPORTABLE_COLUMNS[column]
+                value = getattr(response, attr)
+                if column == "hours_per_day_bucket":
+                    value = _hours_bucket_value(getattr(response, attr))
+                elif isinstance(value, bool):
+                    value = "yes" if value else "no"
+                elif isinstance(value, dict):
+                    value = json.dumps(value)
+                elif value is None:
+                    value = ""
+                row[column] = value
+            writer.writerow(row)
+
+        logger = logging.getLogger("music_health_app")
+        logger.info(
+            "action=EXPORT_DATA columns=%s limit=%s",
+            ",".join(requested_columns),
+            limit or "all",
+        )
+
+        csv_data = buffer.getvalue()
+        response = make_response(csv_data)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = "attachment; filename=filtered_responses.csv"
         return response
 
     return app
