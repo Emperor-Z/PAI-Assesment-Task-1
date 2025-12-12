@@ -86,7 +86,9 @@ def _row_to_survey_response(row: Dict[str, str]) -> SurveyResponse:
     )
 
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("music_health_app")
+LOGGER.addHandler(logging.NullHandler())
+LOGGER.propagate = False
 
 
 def load_survey_responses_from_csv(csv_path: str, strict: bool = True) -> List[SurveyResponse]:
