@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from src.models import SurveyResponse
 
@@ -37,6 +37,7 @@ class DatabaseManager:
         satisfy unit tests.
         """
         self.connection = sqlite3.connect(self.db_path)
+        self.connection.row_factory = sqlite3.Row
 
     def create_tables(self) -> None:
         """
@@ -153,3 +154,21 @@ class DatabaseManager:
             """
         )
         return cursor.fetchall()
+
+    def get_respondent_by_id(self, respondent_id: int) -> Optional[sqlite3.Row]:
+        """
+        Retrieve a single respondent row by id.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT id, age, primary_streaming_service as service
+            FROM Respondents
+            WHERE id = ?
+            """,
+            (respondent_id,),
+        )
+        return cursor.fetchone()
