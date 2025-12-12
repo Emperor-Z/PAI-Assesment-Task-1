@@ -253,6 +253,21 @@ class AnalysisEngine:
             counts[label] = counts.get(label, 0) + 1
         return counts
 
+    def get_top_genres(
+        self,
+        responses: List[SurveyResponse] | None = None,
+        top_n: int = 10,
+    ) -> List[tuple[str, int]]:
+        """Return the most common favourite genres."""
+        dataset = self._resolve_dataset(responses)
+        counts: Dict[str, int] = {}
+        for response in dataset:
+            genre = response.fav_genre.strip() or "Unknown"
+            counts[genre] = counts.get(genre, 0) + 1
+
+        sorted_items = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+        return sorted_items[:top_n]
+
     @staticmethod
     def _determine_age_group(age: int) -> str | None:
         """Return the configured age group label for a numeric age."""

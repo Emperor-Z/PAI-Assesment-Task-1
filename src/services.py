@@ -141,3 +141,16 @@ class InsightsService:
         responses = self._get_responses_for(criteria)
         engine = self._get_engine_for(responses)
         return engine.get_music_effects_counts(responses)
+
+    @log_action("GET_TOP_GENRES")
+    def get_top_genres(
+        self,
+        criteria: FilterCriteria | None = None,
+        top_n: int = 10,
+    ) -> List[tuple[str, int]]:
+        """Return the most popular favourite genres."""
+        if top_n <= 0:
+            raise ValueError("top_n must be a positive integer")
+        responses = self._get_responses_for(criteria)
+        engine = self._get_engine_for(responses)
+        return engine.get_top_genres(responses, top_n=top_n)
