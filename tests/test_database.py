@@ -332,3 +332,18 @@ class TestDatabaseManager(unittest.TestCase):
 
         services = self.db_manager.get_distinct_streaming_services()
         self.assertEqual(["Apple Music", "Spotify"], services)
+
+    def test_get_distinct_fav_genres(self) -> None:
+        """Distinct favourite genres should be sorted and unique."""
+        first = self._make_sample_response()
+        first.fav_genre = "Lofi"
+        second = self._make_sample_response()
+        second.fav_genre = "Rock"
+        third = self._make_sample_response()
+        third.fav_genre = "Lofi"
+        self.db_manager.insert_survey_response(first)
+        self.db_manager.insert_survey_response(second)
+        self.db_manager.insert_survey_response(third)
+
+        genres = self.db_manager.get_distinct_fav_genres()
+        self.assertEqual(["Lofi", "Rock"], genres)
