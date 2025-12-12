@@ -11,6 +11,7 @@ from typing import Any, Dict
 
 from flask import Flask, Response, make_response, render_template, request
 
+from src.charts import render_hours_vs_anxiety_png, render_streaming_counts_png
 from src.database import DatabaseManager
 from src.etl_clean import clean_raw_responses_into_database
 from src.etl_stage import ingest_csv_into_raw_database
@@ -129,6 +130,20 @@ def create_app(
         service = _build_service()
         buckets = service.get_hours_vs_anxiety()
         return render_template("hours_vs_anxiety.html", buckets=buckets)
+
+    @app.route("/charts/streaming.png", methods=["GET"])
+    def streaming_chart() -> Response:
+        service = _build_service()
+        counts = service.get_streaming_service_counts()
+        png = render_streaming_counts_png(counts)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/hours-vs-anxiety.png", methods=["GET"])
+    def hours_vs_anxiety_chart() -> Response:
+        service = _build_service()
+        buckets = service.get_hours_vs_anxiety()
+        png = render_hours_vs_anxiety_png(buckets)
+        return Response(png, mimetype="image/png")
 
     @app.route("/export/streaming-csv", methods=["GET"])
     def export_streaming_csv() -> Any:
