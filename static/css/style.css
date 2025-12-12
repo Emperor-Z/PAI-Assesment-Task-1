@@ -8,16 +8,20 @@ body {
 
 main {
   padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 nav {
   background-color: #1f3a93;
   padding: 0.75rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 nav a {
   color: #ffffff;
-  margin-right: 0.75rem;
   text-decoration: none;
   font-weight: 600;
 }
@@ -104,6 +108,10 @@ nav a:hover {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
+.chart-card.wide {
+  grid-column: span 2;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -121,4 +129,123 @@ td {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.5rem;
+}
+
+.filter-panel {
+  margin-bottom: 1.5rem;
+}
+
+.data-quality-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  margin-bottom: 1.5rem;
+}
+
+.dq-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.rejection-list ul {
+  padding-left: 1rem;
+}
+
+.cleaning-rules,
+.mean-summary {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  margin-bottom: 1.5rem;
+}
+
+.no-data {
+  color: #b25000;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.actions-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  align-items: center;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  background: #1f3a93;
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+}
+
+.inline-form {
+  display: inline-block;
+  margin: 0;
+}
+
+.inline-form button {
+  background: transparent;
+  border: none;
+  color: #1f3a93;
+  cursor: pointer;
+  padding: 0;
+}
+
+.error-panel,
+.note-panel {
+  background: #fff6f6;
+  border: 1px solid #f5c2c7;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.note-panel {
+  background: #f5f8ff;
+  border-color: #bcd0ff;
+}
+
+.warning {
+  color: #b25000;
+  font-weight: 600;
+}
+
+.pagination {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.respondent-form .form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.respondent-form input,
+.respondent-form select {
+  width: 100%;
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+}
+
+.form-actions {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.75rem;
+}
+
+.help-text {
+  font-size: 0.85rem;
+  color: #475569;
 }

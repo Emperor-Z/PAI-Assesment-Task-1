@@ -106,6 +106,22 @@
     <h3>Average depression</h3>
     <p>{{ "%.1f"|format(mean_scores.get("depression", 0)) }}</p>
   </div>
+  <div class="stat-card">
+    <h3>Average insomnia</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("insomnia", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average OCD</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("ocd", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Top favourite genre</h3>
+    <p>{{ top_genre_name }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Rejected rows</h3>
+    <p>{{ data_quality.rejected }}</p>
+  </div>
 </section>
 
 <section class="data-quality-panel">
@@ -212,5 +228,12 @@
     <li>Insomnia: {{ "%.1f"|format(mean_scores.get("insomnia", 0)) }}</li>
     <li>OCD: {{ "%.1f"|format(mean_scores.get("ocd", 0)) }}</li>
   </ul>
+</section>
+
+<section class="note-panel">
+  <p>
+    Insights are associative and based on self-reported survey responses. They do not imply causality,
+    and small groups can be noisy—use the min_n control or clear filters when charts show no data.
+  </p>
 </section>
 {% endblock %}

@@ -70,6 +70,38 @@ class TestWebApp(unittest.TestCase):
         self.assertIn("Rejected rows", html)
         self.assertIn("Top rejection reasons", html)
 
+    def test_home_page_shows_extended_health_kpis(self) -> None:
+        """Dashboard should highlight broader health KPIs and context note."""
+        response = self.client.get("/")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        expected_labels = [
+            "Top streaming service",
+            "Top favourite genre",
+            "Average insomnia",
+            "Average OCD",
+            "Rejected rows",
+        ]
+        for label in expected_labels:
+            self.assertIn(label, html)
+        self.assertIn("Insights are associative", html)
+
+    def test_home_page_includes_chart_placeholders(self) -> None:
+        """Home should embed the main suite of health impact visuals."""
+        response = self.client.get("/")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        chart_paths = [
+            "/charts/streaming.png",
+            "/charts/hours-vs-anxiety.png",
+            "/charts/anxiety-distribution.png",
+            "/charts/age-group-means.png",
+            "/charts/music-effects.png",
+            "/charts/top-genres.png",
+        ]
+        for path in chart_paths:
+            self.assertIn(path, html)
+
     def test_data_quality_page_renders_counts_and_reasons(self) -> None:
         """Dedicated data quality view should show counts and rejection reasons."""
         response = self.client.get("/data-quality")

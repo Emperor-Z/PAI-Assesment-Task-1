@@ -337,6 +337,7 @@ def create_app(
             key=lambda item: (-item[1], item[0]),
         )[:5]
         top_genres = service.get_top_genres(criteria, top_n=5)
+        top_genre_name = top_genres[0][0] if top_genres else "Unknown"
         mean_scores = overview.get("mean_scores", {})
         selected_filters = request.args.to_dict(flat=True)
         query_string = request.query_string.decode("utf-8")
@@ -366,6 +367,7 @@ def create_app(
             mean_scores=mean_scores,
             charts=charts,
             data_quality=data_quality,
+            top_genre_name=top_genre_name,
             boolean_filters=BOOLEAN_FILTERS,
             hours_buckets=["<=1", "1-3", ">3"],
             min_n_options=[1, 3, 5, 10],
