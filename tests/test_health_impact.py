@@ -76,6 +76,14 @@ class TestHealthImpactAnalytics(unittest.TestCase):
             self.assertIn("n", row)
             self.assertGreater(row["n"], 0)
 
+    def test_correlations_for_hours_vs_scores(self) -> None:
+        metrics = self.service.get_correlations_hours_vs_scores()
+        self.assertIn("anxiety", metrics)
+        anxiety = metrics["anxiety"]
+        self.assertIn("r", anxiety)
+        self.assertGreaterEqual(anxiety["n"], 2)
+        self.assertIsNotNone(anxiety["r"])
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
