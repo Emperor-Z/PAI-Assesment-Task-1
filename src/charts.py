@@ -5,6 +5,9 @@ from __future__ import annotations
 import io
 from typing import Dict
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 
