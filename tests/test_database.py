@@ -12,6 +12,7 @@ The tests use an in-memory SQLite database (':memory:') so they do not
 create any real files on disk and can run quickly and repeatedly.
 """
 
+import json
 import sqlite3
 import unittest
 from typing import Dict
@@ -172,6 +173,23 @@ class TestDatabaseManager(unittest.TestCase):
             self.db_manager.insert_survey_response(response)
         except sqlite3.Error as exc:
             self.fail(f"insert_survey_response raised sqlite3.Error: {exc!r}")
+
+    def test_insert_raw_response(self) -> None:
+        """
+        GIVEN a raw row dict
+        WHEN insert_raw_response is called
+        THEN the row should be stored as JSON in RawResponses.
+        """
+        raw_row = {"Age": "21", "Primary streaming service": "Spotify"}
+        raw_id = self.db_manager.insert_raw_response(raw_row, error=None)
+
+        cursor = self.db_manager.connection.cursor()
+        cursor.execute("SELECT raw_json, ingestion_error FROM RawResponses WHERE id = ?", (raw_id,))
+        stored_row = cursor.fetchone()
+        self.assertIsNotNone(stored_row)
+        self.assertIsNone(stored_row[1])
+        decoded = json.loads(stored_row[0])
+        self.assertEqual(raw_row, decoded)
 
     def test_get_respondent_by_id_returns_correct_row(self) -> None:
         """
