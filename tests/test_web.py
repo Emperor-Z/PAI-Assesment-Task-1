@@ -96,6 +96,89 @@ class TestWebApp(unittest.TestCase):
         self.assertIn("Listening duration vs average anxiety", html)
         self.assertIn("<table", html)
 
+    def test_hours_vs_anxiety_route_handles_dirty_csv(self) -> None:
+        """
+        GIVEN a CSV with dirty rows
+        WHEN building the app and hitting /hours-vs-anxiety
+        THEN the response should still be 200 with expected content.
+        """
+        import csv
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            csv_path = os.path.join(tmpdir, "mixed.csv")
+            fieldnames = [
+                "Timestamp",
+                "Age",
+                "Primary streaming service",
+                "Hours per day",
+                "While working",
+                "Instrumentalist",
+                "Composer",
+                "Fav genre",
+                "Exploratory",
+                "Foreign languages",
+                "BPM",
+                "Frequency [Pop]",
+                "Anxiety",
+                "Depression",
+                "Insomnia",
+                "OCD",
+                "Music effects",
+            ]
+            with open(csv_path, "w", newline="", encoding="utf-8") as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "Timestamp": "2022-08-27",
+                        "Age": "21",
+                        "Primary streaming service": "Spotify",
+                        "Hours per day": "3.5",
+                        "While working": "Yes",
+                        "Instrumentalist": "No",
+                        "Composer": "No",
+                        "Fav genre": "Lofi",
+                        "Exploratory": "Yes",
+                        "Foreign languages": "No",
+                        "BPM": "90",
+                        "Frequency [Pop]": "Sometimes",
+                        "Anxiety": "4",
+                        "Depression": "3",
+                        "Insomnia": "2",
+                        "OCD": "1",
+                        "Music effects": "Helps",
+                    }
+                )
+                writer.writerow(
+                    {
+                        "Timestamp": "2022-08-28",
+                        "Age": "",
+                        "Primary streaming service": "YouTube",
+                        "Hours per day": "1.0",
+                        "While working": "No",
+                        "Instrumentalist": "No",
+                        "Composer": "No",
+                        "Fav genre": "Pop",
+                        "Exploratory": "No",
+                        "Foreign languages": "No",
+                        "BPM": "",
+                        "Frequency [Pop]": "Rarely",
+                        "Anxiety": "2",
+                        "Depression": "1",
+                        "Insomnia": "1",
+                        "OCD": "0",
+                        "Music effects": "Neutral",
+                    }
+                )
+
+            test_app = create_app(testing=True, csv_path=csv_path, db_path=":memory:")
+            client = test_app.test_client()
+            response = client.get("/hours-vs-anxiety")
+            self.assertEqual(200, response.status_code)
+            html = response.data.decode("utf-8")
+            self.assertIn("Listening duration vs average anxiety", html)
+
     def test_export_streaming_counts_as_csv(self) -> None:
         """
         GIVEN the web app
