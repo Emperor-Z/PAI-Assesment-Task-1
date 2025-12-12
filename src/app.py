@@ -9,9 +9,11 @@ from __future__ import annotations
 import os
 from typing import Any, Dict
 
-from flask import Flask, make_response, render_template, request
+from flask import Flask, Response, make_response, render_template, request
 
-from src.ingestion import load_survey_responses_from_csv
+from src.database import DatabaseManager
+from src.etl_clean import clean_raw_responses_into_database
+from src.etl_stage import ingest_csv_into_raw_database
 from src.logging_utils import configure_logger
 from src.services import InsightsService
 
@@ -20,6 +22,7 @@ def create_app(
     testing: bool = False,
     csv_path: str | None = None,
     log_path: str | None = None,
+    db_path: str | None = None,
 ) -> Flask:
     """
     Application factory for the Flask web app.
@@ -48,18 +51,41 @@ def create_app(
         os.makedirs(logs_dir, exist_ok=True)
         log_path = os.path.join(logs_dir, "app.log")
 
+    if db_path is None:
+        data_dir = os.path.join(base_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+        db_path = os.path.join(data_dir, "app.db")
+
     # Configure logger for the whole app
     configure_logger(log_path)
 
     # Store paths in config so route handlers can access them
     app.config["CSV_PATH"] = csv_path
     app.config["LOG_PATH"] = log_path
+    app.config["DB_PATH"] = db_path
+
+    cached_service: InsightsService | None = None
 
     def _build_service() -> InsightsService:
         """Build an InsightsService using the configured CSV path."""
+        nonlocal cached_service
+        if cached_service is not None:
+            return cached_service
+
         path = app.config["CSV_PATH"]
-        responses = load_survey_responses_from_csv(path)
-        return InsightsService(responses)
+        database_path = app.config["DB_PATH"]
+        db_manager = DatabaseManager(database_path)
+        db_manager.connect()
+        db_manager.create_tables()
+
+        if db_manager.get_respondent_count() == 0:
+            ingest_csv_into_raw_database(path, db_manager)
+            clean_raw_responses_into_database(db_manager)
+
+        responses = db_manager.get_all_clean_responses()
+        db_manager.close()
+        cached_service = InsightsService(responses)
+        return cached_service
 
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
