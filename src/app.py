@@ -99,7 +99,9 @@ def create_app(
         return render_template("streaming.html", counts=counts)
 
     @app.route("/hours-vs-anxiety", methods=["GET"])
-    def hours_vs_anxiety() -> str:  # pragma: no cover (stub)
-        return "HOURS PLACEHOLDER"
+    def hours_vs_anxiety() -> str:
+        service = _build_service()
+        buckets = service.get_hours_vs_anxiety()
+        return render_template("hours_vs_anxiety.html", buckets=buckets)
 
     return app
