@@ -86,6 +86,32 @@ class TestWebApp(unittest.TestCase):
         self.assertEqual("text/csv; charset=utf-8", response.headers.get("Content-Type"))
         self.assertIn("reason", response.data.decode("utf-8").splitlines()[0])
 
+    def test_export_page_renders_controls(self) -> None:
+        response = self.client.get("/export")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn("Select dataset", html)
+        self.assertIn("Columns", html)
+        self.assertIn("Row limit", html)
+
+    def test_export_download_respects_columns_and_filters(self) -> None:
+        response = self.client.get(
+            "/export/download.csv?dataset=clean&columns=age&columns=primary_streaming_service&limit=1&streaming_service=Spotify"
+        )
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("text/csv; charset=utf-8", response.headers.get("Content-Type"))
+        lines = response.data.decode("utf-8").strip().splitlines()
+        self.assertEqual("age,primary_streaming_service", lines[0].lower())
+        self.assertEqual(2, len(lines))
+        self.assertIn("Spotify", lines[1])
+
+    def test_export_download_all_columns_defaults(self) -> None:
+        response = self.client.get("/export/download.csv?dataset=clean")
+        self.assertEqual(200, response.status_code)
+        header = response.data.decode("utf-8").splitlines()[0].lower()
+        self.assertIn("age", header)
+        self.assertIn("primary_streaming_service", header)
+
     def test_genre_page_shows_form(self) -> None:
         """
         GIVEN the web app
@@ -381,7 +407,7 @@ class TestWebApp(unittest.TestCase):
 
     def test_configurable_export_download(self) -> None:
         """Export endpoint should honour columns and limits."""
-        response = self.client.get("/export/data.csv?columns=age,anxiety_score&limit=1")
+        response = self.client.get("/export/download.csv?dataset=clean&columns=age&columns=anxiety_score&limit=1")
         self.assertEqual(200, response.status_code)
         self.assertIn("text/csv", response.headers.get("Content-Type", ""))
         body = response.data.decode("utf-8").strip().splitlines()
@@ -390,7 +416,7 @@ class TestWebApp(unittest.TestCase):
 
     def test_configurable_export_rejects_invalid_columns(self) -> None:
         """Unknown columns should trigger a 400."""
-        response = self.client.get("/export/data.csv?columns=unknown_column")
+        response = self.client.get("/export/download.csv?dataset=clean&columns=unknown_column")
         self.assertEqual(400, response.status_code)
 
     def test_export_page_renders_form(self) -> None:
@@ -398,6 +424,5 @@ class TestWebApp(unittest.TestCase):
         response = self.client.get("/export")
         self.assertEqual(200, response.status_code)
         html = response.data.decode("utf-8")
-        self.assertIn("Select columns", html)
-        self.assertIn('name="columns"', html)
-        self.assertIn('name="limit"', html)
+        self.assertIn("Select dataset", html)
+        self.assertIn("Row limit", html)
