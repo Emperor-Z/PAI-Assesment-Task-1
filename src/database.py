@@ -236,3 +236,15 @@ class DatabaseManager:
         )
         self.connection.commit()
         return int(cursor.lastrowid)
+
+    def get_all_raw_responses(self) -> List[dict[str, str]]:
+        """
+        Return all raw responses decoded from JSON.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT raw_json FROM RawResponses ORDER BY id ASC")
+        rows = cursor.fetchall()
+        return [json.loads(row[0]) for row in rows]
