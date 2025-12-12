@@ -345,6 +345,21 @@ class DatabaseManager:
         )
         return [row[0] for row in cursor.fetchall()]
 
+    def get_distinct_fav_genres(self) -> List[str]:
+        """Return sorted list of distinct favourite genres."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT fav_genre
+            FROM Respondents
+            WHERE fav_genre <> ''
+            ORDER BY fav_genre ASC
+            """
+        )
+        return [row[0] for row in cursor.fetchall()]
+
     def get_clean_responses_filtered(
         self,
         criteria: FilterCriteria,
