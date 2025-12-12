@@ -158,3 +158,50 @@ class TestDatabaseManager(unittest.TestCase):
             self.db_manager.insert_survey_response(response)
         except sqlite3.Error as exc:
             self.fail(f"insert_survey_response raised sqlite3.Error: {exc!r}")
+
+    def test_get_respondent_by_id_returns_correct_row(self) -> None:
+        """
+        GIVEN an inserted SurveyResponse
+        WHEN get_respondent_by_id is called
+        THEN it should return the correct respondent row including age and service.
+        """
+        response = self._make_sample_response()
+        respondent_id = self.db_manager.insert_survey_response(response)
+
+        row = self.db_manager.get_respondent_by_id(respondent_id)
+        self.assertIsNotNone(row)
+        self.assertEqual(respondent_id, row["id"])
+        self.assertEqual(response.age, row["age"])
+        self.assertEqual(response.primary_streaming_service, row["service"])
+
+    def test_update_primary_streaming_service_changes_value(self) -> None:
+        """
+        GIVEN an inserted respondent
+        WHEN update_primary_streaming_service is called
+        THEN the Respondents.service column should be updated.
+        """
+        response = self._make_sample_response()
+        respondent_id = self.db_manager.insert_survey_response(response)
+
+        self.db_manager.update_primary_streaming_service(respondent_id, "UpdatedService")
+
+        row = self.db_manager.get_respondent_by_id(respondent_id)
+        self.assertIsNotNone(row)
+        self.assertEqual("UpdatedService", row["service"])
+
+    def test_delete_respondent_and_health_stats_removes_rows(self) -> None:
+        """
+        GIVEN an inserted respondent with health stats
+        WHEN delete_respondent_and_health_stats is called
+        THEN both Respondents and HealthStats rows should be removed.
+        """
+        response = self._make_sample_response()
+        respondent_id = self.db_manager.insert_survey_response(response)
+
+        self.db_manager.delete_respondent_and_health_stats(respondent_id)
+
+        row = self.db_manager.get_respondent_by_id(respondent_id)
+        self.assertIsNone(row)
+
+        joined = self.db_manager.get_all_health_stats_joined()
+        self.assertEqual(0, len(joined))
