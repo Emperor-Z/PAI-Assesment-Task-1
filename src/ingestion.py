@@ -10,6 +10,7 @@ This module is responsible for:
 from __future__ import annotations
 
 import csv
+import logging
 from typing import Dict, List, TYPE_CHECKING
 
 from src.models import SurveyResponse, map_frequency_to_numeric
@@ -85,7 +86,10 @@ def _row_to_survey_response(row: Dict[str, str]) -> SurveyResponse:
     )
 
 
-def load_survey_responses_from_csv(csv_path: str) -> List[SurveyResponse]:
+LOGGER = logging.getLogger(__name__)
+
+
+def load_survey_responses_from_csv(csv_path: str, strict: bool = True) -> List[SurveyResponse]:
     """
     Load survey responses from a CSV file path and return a list of
     SurveyResponse objects.
@@ -94,7 +98,13 @@ def load_survey_responses_from_csv(csv_path: str) -> List[SurveyResponse]:
     with open(csv_path, newline="", encoding="utf-8") as csv_file:
         reader = csv.DictReader(csv_file)
         for row in reader:
-            responses.append(_row_to_survey_response(row))
+            try:
+                responses.append(_row_to_survey_response(row))
+            except (ValueError, TypeError) as exc:
+                if strict:
+                    raise
+                LOGGER.warning("Skipping invalid row: %s", exc)
+                continue
     return responses
 
 
