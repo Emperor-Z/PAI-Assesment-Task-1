@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Streaming service usage</h1>
+<p>Counts are derived from the current dataset.</p>
+
+<table border="1">
+    <thead>
+        <tr>
+            <th>Streaming service</th>
+            <th>Respondent count</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for service, count in counts.items() %}
+        <tr>
+            <td>{{ service }}</td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
