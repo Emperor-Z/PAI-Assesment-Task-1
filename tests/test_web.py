@@ -42,6 +42,7 @@ class TestWebApp(unittest.TestCase):
         self.assertEqual(200, response.status_code)
         html = response.data.decode("utf-8")
         self.assertIn("Music & Mental Health Insights", html)
+        self.assertIn("/static/css/style.css", html)
 
     def test_home_page_includes_filter_form(self) -> None:
         """Home page should expose filter dropdowns for analytics."""
