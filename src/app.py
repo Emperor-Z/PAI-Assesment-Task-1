@@ -16,6 +16,7 @@ from src.charts import (
     render_age_group_means_chart,
     render_music_effects_chart,
     render_score_distribution_chart,
+    render_top_genres_chart,
     render_streaming_counts_png,
 )
 from src.database import DatabaseManager
@@ -186,6 +187,14 @@ def create_app(
         criteria = _parse_filter_criteria()
         counts = service.get_music_effects_counts(criteria)
         png = render_music_effects_chart(counts)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/top-genres.png", methods=["GET"])
+    def top_genres_chart() -> Response:
+        service = _build_service()
+        criteria = _parse_filter_criteria()
+        top_genres = service.get_top_genres(criteria)
+        png = render_top_genres_chart(top_genres)
         return Response(png, mimetype="image/png")
 
     @app.route("/export/streaming-csv", methods=["GET"])

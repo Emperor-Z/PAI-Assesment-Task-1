@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 import matplotlib
 
@@ -100,6 +100,27 @@ def render_music_effects_chart(counts: Dict[str, int]) -> bytes:
     ax.barh(labels, values, color="#F79646")
     ax.set_xlabel("Respondents")
     ax.set_title("Music effects reported")
+    fig.tight_layout()
+
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def render_top_genres_chart(top_genres: Sequence[tuple[str, int]]) -> bytes:
+    """Render a bar chart for the most popular genres."""
+    labels = [genre for genre, _ in top_genres] or ["No data"]
+    values = [count for _, count in top_genres] or [0]
+    indices = list(range(len(labels)))
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(indices, values, color="#4BACC6")
+    ax.set_ylabel("Respondents")
+    ax.set_title("Top favourite genres")
+    ax.set_xticks(indices)
+    ax.set_xticklabels(labels, rotation=30, ha="right")
     fig.tight_layout()
 
     buffer = io.BytesIO()
