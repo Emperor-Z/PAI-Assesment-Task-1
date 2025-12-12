@@ -360,6 +360,21 @@ class DatabaseManager:
         )
         return [row[0] for row in cursor.fetchall()]
 
+    def get_distinct_music_effects(self) -> List[str]:
+        """Return sorted list of distinct music effects labels."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT music_effects
+            FROM Respondents
+            WHERE music_effects <> ''
+            ORDER BY music_effects ASC
+            """
+        )
+        return [row[0] for row in cursor.fetchall()]
+
     def get_clean_responses_filtered(
         self,
         criteria: FilterCriteria,
