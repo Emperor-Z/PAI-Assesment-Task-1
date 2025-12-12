@@ -119,7 +119,13 @@ class DatabaseManager:
         """
         Return the number of rows in the Respondents table.
         """
-        raise NotImplementedError
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Respondents")
+        result = cursor.fetchone()
+        return int(result[0] if result is not None else 0)
 
     def get_all_health_stats_joined(self) -> List[Tuple[int, int, int, int, int]]:
         """
