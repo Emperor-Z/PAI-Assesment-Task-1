@@ -128,3 +128,70 @@ def render_top_genres_chart(top_genres: Sequence[tuple[str, int]]) -> bytes:
     plt.close(fig)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def render_genre_vs_anxiety_chart(rows: Sequence[Dict[str, float | int | str]]) -> bytes:
+    """Render average anxiety scores by genre."""
+    labels = [str(row.get("genre", "Unknown")) for row in rows] or ["No data"]
+    values = [float(row.get("anxiety_mean", 0.0)) for row in rows] or [0.0]
+    counts = [int(row.get("n", 0)) for row in rows]
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.bar(labels, values, color="#4F81BD")
+    for bar, n in zip(bars, counts):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f"n={n}", ha="center", va="bottom", fontsize=8)
+    ax.set_ylabel("Average anxiety")
+    ax.set_title("Anxiety by favourite genre")
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    fig.tight_layout()
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def render_effects_vs_anxiety_chart(rows: Sequence[Dict[str, float | int | str]]) -> bytes:
+    """Render anxiety averages by music effect."""
+    labels = [str(row.get("effect", "Unknown")) for row in rows] or ["No data"]
+    values = [float(row.get("anxiety_mean", 0.0)) for row in rows] or [0.0]
+    counts = [int(row.get("n", 0)) for row in rows]
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.bar(labels, values, color="#C0504D")
+    for bar, n in zip(bars, counts):
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(), f"n={n}", ha="center", va="bottom", fontsize=8)
+    ax.set_ylabel("Average anxiety")
+    ax.set_title("Anxiety by music effect")
+    plt.setp(ax.get_xticklabels(), rotation=30, ha="right")
+    fig.tight_layout()
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def render_hours_vs_scores_chart(rows: Sequence[Dict[str, float | int | str]]) -> bytes:
+    """Render a multi-line chart for hours bucket vs mean scores."""
+    if not rows:
+        default_buckets = ["<=1", "1-3", ">3"]
+        rows = [{"bucket": b, "anxiety_mean": 0.0, "depression_mean": 0.0, "insomnia_mean": 0.0, "ocd_mean": 0.0} for b in default_buckets]
+    buckets = [row.get("bucket", "") for row in rows]
+    metrics = ["anxiety_mean", "depression_mean", "insomnia_mean", "ocd_mean"]
+    labels = ["Anxiety", "Depression", "Insomnia", "OCD"]
+    colors = ["#4F81BD", "#C0504D", "#9BBB59", "#8064A2"]
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    for metric, label, color in zip(metrics, labels, colors):
+        values = [row.get(metric, 0.0) for row in rows]
+        ax.plot(buckets, values, marker="o", label=label, color=color)
+
+    ax.set_ylabel("Average score")
+    ax.set_xlabel("Listening hours bucket")
+    ax.set_title("Hours per day vs mental health scores")
+    ax.legend()
+    fig.tight_layout()
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()
