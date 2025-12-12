@@ -226,27 +226,22 @@ class AnalysisEngine:
         return sum(scores) / len(scores)
 
 
-    def get_average_depression_by_genre(self, genre: str) -> Optional[float]:
+     def get_average_depression_by_genre(self, genre: str) -> Optional[float]:
         """
         Calculate the average depression score for respondents whose
         favourite genre matches the given genre (case-insensitive).
 
-        Returns
-        -------
-        Optional[float]
-            The arithmetic mean depression score, or None if there are no matches.
+        Returns None if there are no matching respondents.
+
+        Mirrors the logic for anxiety, but uses depression_score.
         """
-        # Guard clause: wrong type
         if not isinstance(genre, str):
             raise TypeError("genre must be a str")
 
-        # Normalise for case-insensitive comparison
         genre_lower = genre.strip().lower()
         if not genre_lower:
-            # If someone passes an empty string, treat as "no results"
             return None
 
-        # Collect depression scores for matching favourite genre
         scores: List[int] = [
             response.depression_score
             for response in self.responses
@@ -257,6 +252,7 @@ class AnalysisEngine:
             return None
 
         return sum(scores) / len(scores)
+
 
     def get_count_by_streaming_service(self) -> Dict[str, int]:
         """
