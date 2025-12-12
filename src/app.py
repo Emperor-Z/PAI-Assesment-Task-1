@@ -93,8 +93,10 @@ def create_app(
 
 
     @app.route("/streaming", methods=["GET"])
-    def streaming_counts() -> str:  # pragma: no cover (stub)
-        return "STREAMING PLACEHOLDER"
+    def streaming_counts() -> str:
+        service = _build_service()
+        counts = service.get_streaming_service_counts()
+        return render_template("streaming.html", counts=counts)
 
     @app.route("/hours-vs-anxiety", methods=["GET"])
     def hours_vs_anxiety() -> str:  # pragma: no cover (stub)
