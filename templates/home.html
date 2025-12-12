@@ -99,6 +99,34 @@
   </div>
 </section>
 
+<section class="data-quality-panel">
+  <h2>Data quality</h2>
+  <div class="dq-cards">
+    <div class="stat-card">
+      <h3>Raw rows</h3>
+      <p>{{ data_quality.raw }}</p>
+    </div>
+    <div class="stat-card">
+      <h3>Cleaned rows</h3>
+      <p>{{ data_quality.clean }}</p>
+    </div>
+    <div class="stat-card">
+      <h3>Rejected rows</h3>
+      <p>{{ data_quality.rejected }}</p>
+    </div>
+  </div>
+  <div class="rejection-list">
+    <h3>Top rejection reasons</h3>
+    <ul>
+      {% for reason, count in data_quality.top_reasons %}
+      <li>{{ reason }} — {{ count }}</li>
+      {% else %}
+      <li>No rejected rows recorded.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
 <section class="chart-grid">
   <div class="chart-card">
     <h3>Streaming service usage</h3>

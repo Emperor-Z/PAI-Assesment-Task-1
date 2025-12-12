@@ -154,6 +154,7 @@ def create_app(
     @app.route("/", methods=["GET"])
     def home() -> str:
         service = _get_service()
+        manager = get_db_manager()
         criteria = _parse_filter_criteria()
         filter_options = service.get_filter_options()
         overview = service.get_overview(criteria)
@@ -180,6 +181,13 @@ def create_app(
             "top_genres": _chart_url("top_genres_chart"),
         }
 
+        data_quality = {
+            "raw": manager.get_raw_row_count(),
+            "clean": manager.get_clean_row_count(),
+            "rejected": manager.get_rejected_row_count(),
+            "top_reasons": manager.get_top_rejection_reasons(limit=5),
+        }
+
         return render_template(
             "home.html",
             overview=overview,
@@ -189,6 +197,7 @@ def create_app(
             top_genres=top_genres,
             mean_scores=mean_scores,
             charts=charts,
+            data_quality=data_quality,
             boolean_filters=BOOLEAN_FILTERS,
             hours_buckets=["<=1", "1-3", ">3"],
         )
