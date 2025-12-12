@@ -8,11 +8,7 @@ We will implement the real logic step by step using TDD.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
-
-
-from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 
 # --- Frequency mapping helper ------------------------------------------------
@@ -64,10 +60,6 @@ def map_frequency_to_numeric(label: str) -> int:
 
     return FREQUENCY_MAPPING[normalised]
 
-
-
-from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -188,6 +180,38 @@ class AnalysisEngine:
     """
 
     responses: List[SurveyResponse]
+    METRIC_FIELDS: ClassVar[Dict[str, str]] = {
+        "anxiety": "anxiety_score",
+        "depression": "depression_score",
+        "insomnia": "insomnia_score",
+        "ocd": "ocd_score",
+    }
+
+    def _resolve_dataset(self, responses: List[SurveyResponse] | None) -> List[SurveyResponse]:
+        """Return either the provided dataset or the engine's default list."""
+        return responses if responses is not None else self.responses
+
+    @classmethod
+    def _metric_attr(cls, metric: str) -> str:
+        """Map a metric key to the SurveyResponse attribute."""
+        key = metric.strip().lower()
+        if key not in cls.METRIC_FIELDS:
+            raise ValueError(f"Unknown metric: {metric}")
+        return cls.METRIC_FIELDS[key]
+
+    def get_score_distribution(
+        self,
+        metric: str,
+        responses: List[SurveyResponse] | None = None,
+    ) -> Dict[int, int]:
+        """Count number of respondents per score for a given metric."""
+        dataset = self._resolve_dataset(responses)
+        attr = self._metric_attr(metric)
+        distribution: Dict[int, int] = {score: 0 for score in range(0, 11)}
+        for response in dataset:
+            value = getattr(response, attr)
+            distribution[value] = distribution.get(value, 0) + 1
+        return distribution
 
     def get_average_anxiety_by_genre(self, genre: str) -> Optional[float]:
         """
@@ -338,4 +362,3 @@ class AnalysisEngine:
         if hours <= 3:
             return "1-3"
         return ">3"
-

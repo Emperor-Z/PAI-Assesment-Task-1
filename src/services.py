@@ -38,6 +38,18 @@ class InsightsService:
             self._engine = AnalysisEngine(self._get_responses())
         return self._engine
 
+    def _get_engine_for(self, responses: List[SurveyResponse]) -> AnalysisEngine:
+        """Return an AnalysisEngine for the provided dataset."""
+        if self._responses_cache is not None and responses is self._responses_cache:
+            return self._get_engine()
+        return AnalysisEngine(responses)
+
+    def _get_responses_for(self, criteria: FilterCriteria | None) -> List[SurveyResponse]:
+        """Resolve the dataset matching the provided criteria."""
+        if criteria and self._criteria_has_filters(criteria):
+            return self.db_manager.get_clean_responses_filtered(criteria)
+        return self._get_responses()
+
     @staticmethod
     def _criteria_has_filters(criteria: FilterCriteria) -> bool:
         """Determine whether any filter fields are active."""
@@ -67,11 +79,7 @@ class InsightsService:
     @log_action("GET_OVERVIEW")
     def get_overview(self, criteria: FilterCriteria | None = None) -> Dict[str, Any]:
         """Return headline stats for the dashboard, optionally filtered."""
-        if criteria and self._criteria_has_filters(criteria):
-            responses = self.db_manager.get_clean_responses_filtered(criteria)
-        else:
-            responses = self._get_responses()
-
+        responses = self._get_responses_for(criteria)
         total = len(responses)
         streaming_counts: Dict[str, int] = {}
         for response in responses:
@@ -102,3 +110,14 @@ class InsightsService:
             "insomnia": _mean([r.insomnia_score for r in responses]),
             "ocd": _mean([r.ocd_score for r in responses]),
         }
+
+    @log_action("GET_SCORE_DISTRIBUTION")
+    def get_score_distribution(
+        self,
+        metric: str,
+        criteria: FilterCriteria | None = None,
+    ) -> Dict[int, int]:
+        """Return score distribution for a metric, optionally filtered."""
+        responses = self._get_responses_for(criteria)
+        engine = self._get_engine_for(responses)
+        return engine.get_score_distribution(metric, responses)
