@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from typing import Any, Dict
 
-from flask import Flask, render_template, request
+from flask import Flask, make_response, render_template, request
 
 from src.ingestion import load_survey_responses_from_csv
 from src.logging_utils import configure_logger
@@ -103,5 +103,23 @@ def create_app(
         service = _build_service()
         buckets = service.get_hours_vs_anxiety()
         return render_template("hours_vs_anxiety.html", buckets=buckets)
+
+    @app.route("/export/streaming-csv", methods=["GET"])
+    def export_streaming_csv() -> Any:
+        """
+        Export streaming service usage counts as CSV.
+        """
+        service = _build_service()
+        counts = service.get_streaming_service_counts()
+
+        lines = ["service,count"]
+        for service_name, count in counts.items():
+            lines.append(f"{service_name},{count}")
+
+        csv_content = "\n".join(lines) + "\n"
+        response = make_response(csv_content)
+        response.headers["Content-Type"] = "text/csv; charset=utf-8"
+        response.headers["Content-Disposition"] = "attachment; filename=streaming_counts.csv"
+        return response
 
     return app
