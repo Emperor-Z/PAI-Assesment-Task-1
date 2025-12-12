@@ -140,3 +140,15 @@ class TestInsightsService(unittest.TestCase):
         criteria = FilterCriteria(streaming_service="Spotify")
         filtered = self.service.get_top_genres(criteria, top_n=1)
         self.assertEqual([("Lofi", 1)], filtered)
+
+    def test_get_genre_means(self) -> None:
+        """Genre means should report per-genre averages."""
+        means = self.service.get_genre_means("anxiety", top_n=2)
+        self.assertEqual([("Lofi", 5.0), ("Pop", 3.0)], means)
+
+        criteria = FilterCriteria(streaming_service="Spotify")
+        filtered = self.service.get_genre_means("anxiety", criteria, top_n=3)
+        self.assertEqual([("Lofi", 5.0)], filtered)
+
+        with self.assertRaises(ValueError):
+            self.service.get_genre_means("unknown")
