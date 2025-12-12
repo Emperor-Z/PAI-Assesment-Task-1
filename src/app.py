@@ -11,10 +11,15 @@ from typing import Any, Dict
 
 from flask import Flask, Response, make_response, render_template, request
 
-from src.charts import render_hours_vs_anxiety_png, render_streaming_counts_png
+from src.charts import (
+    render_hours_vs_anxiety_png,
+    render_score_distribution_chart,
+    render_streaming_counts_png,
+)
 from src.database import DatabaseManager
 from src.etl_clean import clean_raw_responses_into_database
 from src.etl_stage import ingest_csv_into_raw_database
+from src.filters import FilterCriteria
 from src.logging_utils import configure_logger
 from src.services import InsightsService
 
@@ -66,10 +71,11 @@ def create_app(
     app.config["DB_PATH"] = db_path
 
     cached_service: InsightsService | None = None
+    cached_db_manager: DatabaseManager | None = None
 
     def _build_service() -> InsightsService:
         """Build an InsightsService using the configured CSV path."""
-        nonlocal cached_service
+        nonlocal cached_service, cached_db_manager
         if cached_service is not None:
             return cached_service
 
@@ -83,10 +89,13 @@ def create_app(
             ingest_csv_into_raw_database(path, db_manager)
             clean_raw_responses_into_database(db_manager)
 
-        responses = db_manager.get_all_clean_responses()
-        db_manager.close()
-        cached_service = InsightsService(responses)
+        cached_db_manager = db_manager
+        cached_service = InsightsService(db_manager)
         return cached_service
+
+    def _parse_filter_criteria() -> FilterCriteria:
+        """Build filter criteria from query parameters."""
+        return FilterCriteria.from_request_args(request.args.to_dict(flat=True))
 
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
@@ -151,6 +160,14 @@ def create_app(
         service = _build_service()
         buckets = service.get_hours_vs_anxiety()
         png = render_hours_vs_anxiety_png(buckets)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/anxiety-distribution.png", methods=["GET"])
+    def anxiety_distribution_chart() -> Response:
+        service = _build_service()
+        criteria = _parse_filter_criteria()
+        scores = service.get_score_distribution("anxiety", criteria)
+        png = render_score_distribution_chart("Anxiety", scores)
         return Response(png, mimetype="image/png")
 
     @app.route("/export/streaming-csv", methods=["GET"])

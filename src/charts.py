@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from typing import Dict
+from typing import Dict, List
 
 import matplotlib
 
@@ -36,6 +36,24 @@ def render_hours_vs_anxiety_png(buckets: Dict[str, float]) -> bytes:
     ax.set_title("Listening duration vs average anxiety")
     ax.set_ylabel("Average anxiety score")
     ax.set_xlabel("Listening hours bucket")
+    fig.tight_layout()
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def render_score_distribution_chart(metric_label: str, distribution: Dict[int, int]) -> bytes:
+    """Render a bar chart for a metric's score distribution."""
+    fig, ax = plt.subplots(figsize=(6, 4))
+    scores: List[int] = sorted(distribution.keys())
+    values = [distribution.get(score, 0) for score in scores]
+    ax.bar(scores, values, color="#9BBB59", width=0.8)
+    ax.set_title(f"{metric_label} distribution")
+    ax.set_xlabel("Score")
+    ax.set_ylabel("Respondents")
+    ax.set_xticks(scores)
     fig.tight_layout()
     buffer = io.BytesIO()
     fig.savefig(buffer, format="png")
