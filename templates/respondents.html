@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Respondents</h1>
+<p>
+  Browse cleaned respondents with filters and pagination. Use the actions column to view, edit, or delete records.
+</p>
+<div class="filter-panel">
+  <h2>Filter respondents</h2>
+  <form method="get" class="filter-form">
+    <div class="filter-grid">
+      <label for="age_group">Age group</label>
+      <select id="age_group" name="age_group">
+        <option value="">All age groups</option>
+        {% for group in filter_options.age_groups %}
+        <option value="{{ group }}" {% if selected_filters.get('age_group') == group %}selected{% endif %}>{{ group }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="streaming_service">Streaming service</label>
+      <select id="streaming_service" name="streaming_service">
+        <option value="">All services</option>
+        {% for service in filter_options.streaming_services %}
+        <option value="{{ service }}" {% if selected_filters.get('streaming_service') == service %}selected{% endif %}>{{ service }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="favourite_genre">Favourite genre</label>
+      <select id="favourite_genre" name="favourite_genre">
+        <option value="">All genres</option>
+        {% for genre in filter_options.genres %}
+        <option value="{{ genre }}" {% if selected_filters.get('favourite_genre') == genre %}selected{% endif %}>{{ genre }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="music_effects">Music effects</label>
+      <select id="music_effects" name="music_effects">
+        <option value="">All effects</option>
+        {% for effect in filter_options.music_effects %}
+        <option value="{{ effect }}" {% if selected_filters.get('music_effects') == effect %}selected{% endif %}>{{ effect }}</option>
+        {% endfor %}
+      </select>
+
+      {% for field, label in boolean_filters %}
+      <label for="{{ field }}">{{ label }}</label>
+      <select id="{{ field }}" name="{{ field }}">
+        <option value="">Any</option>
+        <option value="yes" {% if selected_filters.get(field) == 'yes' %}selected{% endif %}>Yes</option>
+        <option value="no" {% if selected_filters.get(field) == 'no' %}selected{% endif %}>No</option>
+      </select>
+      {% endfor %}
+
+      <label for="hours_bucket">Listening hours per day</label>
+      <select id="hours_bucket" name="hours_bucket">
+        <option value="">All ranges</option>
+        {% for bucket in hours_buckets %}
+        <option value="{{ bucket }}" {% if selected_filters.get('hours_bucket') == bucket %}selected{% endif %}>{{ bucket }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="page_size">Rows per page</label>
+      <select id="page_size" name="page_size">
+        {% for size in ['10','25','50'] %}
+        <option value="{{ size }}" {% if page_size_value == size %}selected{% endif %}>{{ size }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit">Apply filters</button>
+      <a class="link-button" href="{{ url_for('respondents_list') }}">Clear filters</a>
+    </div>
+  </form>
+</div>
+
+<div class="actions-bar">
+  <a class="button" href="{{ url_for('respondent_new') }}">Create respondent</a>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Age group</th>
+      <th>Favourite genre</th>
+      <th>Streaming service</th>
+      <th>Music effects</th>
+      <th>Hours bucket</th>
+      <th>Anxiety</th>
+      <th>Depression</th>
+      <th>Insomnia</th>
+      <th>OCD</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for respondent in respondents %}
+    <tr>
+      <td>{{ respondent.id }}</td>
+      <td>{{ respondent.age_group }}</td>
+      <td>{{ respondent.fav_genre }}</td>
+      <td>{{ respondent.streaming_service }}</td>
+      <td>{{ respondent.music_effects }}</td>
+      <td>{{ respondent.hours_bucket }}</td>
+      <td>{{ respondent.anxiety }}</td>
+      <td>{{ respondent.depression }}</td>
+      <td>{{ respondent.insomnia }}</td>
+      <td>{{ respondent.ocd }}</td>
+      <td>
+        <a href="{{ url_for('respondent_detail', respondent_id=respondent.id) }}">View</a> |
+        <a href="{{ url_for('respondent_edit', respondent_id=respondent.id) }}">Edit</a> |
+        <form method="post" action="{{ url_for('respondent_delete', respondent_id=respondent.id) }}" class="inline-form">
+          <button type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="11">No respondents match the selected filters.</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="pagination">
+  {% if page > 1 %}
+  <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page - 1 }}&page_size={{ page_size }}">Previous</a>
+  {% endif %}
+  <span>Page {{ page }} of {{ total_pages }} ({{ total_count }} total)</span>
+  {% if page < total_pages %}
+  <a href="?{% if pagination_query %}{{ pagination_query }}&{% endif %}page={{ page + 1 }}&page_size={{ page_size }}">Next</a>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{% if form_mode == "edit" %}Edit respondent{% else %}Create respondent{% endif %}</h1>
+
+{% if errors %}
+<div class="error-panel">
+  <p>Please fix the following issues:</p>
+  <ul>
+    {% for error in errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<form method="post" action="{{ form_action }}" class="respondent-form">
+  <div class="form-grid">
+    <label for="age">Age</label>
+    <input type="number" id="age" name="age" value="{{ form_values.age }}" required />
+
+    <label for="streaming_service">Streaming service</label>
+    <input type="text" id="streaming_service" name="streaming_service" value="{{ form_values.streaming_service }}" required />
+
+    <label for="hours_per_day">Hours per day</label>
+    <input type="number" step="0.1" id="hours_per_day" name="hours_per_day" value="{{ form_values.hours_per_day }}" required />
+
+    <label for="fav_genre">Favourite genre</label>
+    <input type="text" id="fav_genre" name="fav_genre" value="{{ form_values.fav_genre }}" />
+
+    <label for="music_effects">Music effects</label>
+    <input type="text" id="music_effects" name="music_effects" value="{{ form_values.music_effects }}" />
+
+    {% for field, label in [
+        ('while_working', 'While working'),
+        ('instrumentalist', 'Instrumentalist'),
+        ('composer', 'Composer'),
+        ('exploratory', 'Exploratory'),
+        ('foreign_languages', 'Foreign languages')
+        ] %}
+    <label for="{{ field }}">{{ label }}</label>
+    <select id="{{ field }}" name="{{ field }}">
+      <option value="">Select</option>
+      <option value="yes" {% if form_values[field] == 'yes' %}selected{% endif %}>Yes</option>
+      <option value="no" {% if form_values[field] == 'no' %}selected{% endif %}>No</option>
+    </select>
+    {% endfor %}
+
+    <label for="anxiety_score">Anxiety score</label>
+    <input type="number" min="0" max="10" id="anxiety_score" name="anxiety_score" value="{{ form_values.anxiety }}" required />
+
+    <label for="depression_score">Depression score</label>
+    <input type="number" min="0" max="10" id="depression_score" name="depression_score" value="{{ form_values.depression }}" required />
+
+    <label for="insomnia_score">Insomnia score</label>
+    <input type="number" min="0" max="10" id="insomnia_score" name="insomnia_score" value="{{ form_values.insomnia }}" required />
+
+    <label for="ocd_score">OCD score</label>
+    <input type="number" min="0" max="10" id="ocd_score" name="ocd_score" value="{{ form_values.ocd }}" required />
+  </div>
+
+  <div class="form-actions">
+    <button type="submit">{{ submit_label }}</button>
+    <a class="link-button" href="{{ url_for('respondents_list') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

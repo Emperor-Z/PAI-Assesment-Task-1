@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Respondent #{{ respondent.id }}</h1>
+
+<div class="actions-bar">
+  <a class="button" href="{{ url_for('respondent_edit', respondent_id=respondent.id) }}">Edit</a>
+  <form method="post" action="{{ url_for('respondent_delete', respondent_id=respondent.id) }}" class="inline-form">
+    <button type="submit">Delete</button>
+  </form>
+</div>
+
+<table>
+  <tbody>
+    <tr><th>Age</th><td>{{ respondent.age }} ({{ respondent.age_group }})</td></tr>
+    <tr><th>Streaming service</th><td>{{ respondent.streaming_service }}</td></tr>
+    <tr><th>Favourite genre</th><td>{{ respondent.fav_genre }}</td></tr>
+    <tr><th>Music effects</th><td>{{ respondent.music_effects }}</td></tr>
+    <tr><th>Hours per day</th><td>{{ respondent.hours_per_day }} ({{ respondent.hours_bucket }})</td></tr>
+    <tr><th>While working</th><td>{{ respondent.while_working }}</td></tr>
+    <tr><th>Instrumentalist</th><td>{{ respondent.instrumentalist }}</td></tr>
+    <tr><th>Composer</th><td>{{ respondent.composer }}</td></tr>
+    <tr><th>Exploratory</th><td>{{ respondent.exploratory }}</td></tr>
+    <tr><th>Foreign languages</th><td>{{ respondent.foreign_languages }}</td></tr>
+    <tr><th>Anxiety score</th><td>{{ respondent.anxiety }}</td></tr>
+    <tr><th>Depression score</th><td>{{ respondent.depression }}</td></tr>
+    <tr><th>Insomnia score</th><td>{{ respondent.insomnia }}</td></tr>
+    <tr><th>OCD score</th><td>{{ respondent.ocd }}</td></tr>
+  </tbody>
+</table>
+{% endblock %}

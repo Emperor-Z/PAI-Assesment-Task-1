@@ -10,10 +10,13 @@ import csv
 import io
 import json
 import logging
+import math
 import os
+from datetime import datetime
 from typing import Any, Dict, List, Tuple
+from urllib.parse import urlencode
 
-from flask import Flask, Response, current_app, g, make_response, render_template, request, url_for
+from flask import Flask, Response, abort, current_app, g, make_response, redirect, render_template, request, url_for
 
 from src.charts import (
     render_hours_vs_anxiety_png,
@@ -29,9 +32,10 @@ from src.charts import (
 from src.database import DatabaseManager
 from src.etl_clean import clean_raw_responses_into_database
 from src.etl_stage import ingest_csv_into_raw_database
-from src.filters import FilterCriteria
+from src.filters import AGE_GROUP_RULES, FilterCriteria
 from src.logging_utils import configure_logger
 from src.services import InsightsService
+from src.models import SurveyResponse
 
 BOOLEAN_FILTERS: List[Tuple[str, str]] = [
     ("while_working", "While working"),
@@ -175,6 +179,119 @@ def create_app(
             return default
         return parsed if parsed in allowed else default
 
+    def _age_group_label(age: int | None) -> str:
+        """Map a numeric age to a configured age group label."""
+        if age is None:
+            return "Unknown"
+        for label, (min_age, max_age) in AGE_GROUP_RULES.items():
+            if min_age is not None and age < min_age:
+                continue
+            if max_age is not None and age > max_age:
+                continue
+            return label
+        return "Unknown"
+
+    def _parse_bool_field(value: str | None) -> bool:
+        """Parse yes/no form fields into booleans."""
+        if value is None:
+            return False
+        return value.strip().lower() in {"yes", "true", "1", "on"}
+
+    def _parse_respondent_form(
+        form: Dict[str, str],
+        *,
+        require_response: bool,
+    ) -> tuple[SurveyResponse | None, Dict[str, object] | None, Dict[str, str], List[str]]:
+        """Parse respondent form data, returning typed values and validation errors."""
+        errors: List[str] = []
+        values = {
+            "age": (form.get("age") or "").strip(),
+            "streaming_service": (form.get("streaming_service") or "").strip(),
+            "hours_per_day": (form.get("hours_per_day") or "").strip(),
+            "fav_genre": (form.get("fav_genre") or "").strip(),
+            "music_effects": (form.get("music_effects") or "").strip(),
+            "while_working": (form.get("while_working") or "").strip(),
+            "instrumentalist": (form.get("instrumentalist") or "").strip(),
+            "composer": (form.get("composer") or "").strip(),
+            "exploratory": (form.get("exploratory") or "").strip(),
+            "foreign_languages": (form.get("foreign_languages") or "").strip(),
+            "anxiety": (form.get("anxiety_score") or "").strip(),
+            "depression": (form.get("depression_score") or "").strip(),
+            "insomnia": (form.get("insomnia_score") or "").strip(),
+            "ocd": (form.get("ocd_score") or "").strip(),
+        }
+
+        try:
+            age = int(values["age"])
+        except ValueError:
+            errors.append("Age must be an integer.")
+            age = None
+
+        streaming_service = values["streaming_service"]
+        if not streaming_service:
+            errors.append("Streaming service is required.")
+
+        try:
+            hours_per_day = float(values["hours_per_day"])
+        except ValueError:
+            errors.append("Hours per day must be a number.")
+            hours_per_day = 0.0
+
+        bool_fields = {
+            "while_working": _parse_bool_field(values["while_working"]),
+            "instrumentalist": _parse_bool_field(values["instrumentalist"]),
+            "composer": _parse_bool_field(values["composer"]),
+            "exploratory": _parse_bool_field(values["exploratory"]),
+            "foreign_languages": _parse_bool_field(values["foreign_languages"]),
+        }
+
+        scores: Dict[str, int] = {}
+        for metric in ("anxiety", "depression", "insomnia", "ocd"):
+            try:
+                scores[metric] = int(values[metric])
+            except ValueError:
+                errors.append(f"{metric.capitalize()} score must be an integer.")
+
+        if errors or age is None:
+            return None, None, values, errors
+
+        typed = {
+            "age": age,
+            "streaming_service": streaming_service,
+            "hours_per_day": hours_per_day,
+            "fav_genre": values["fav_genre"],
+            "music_effects": values["music_effects"],
+            **bool_fields,
+            "anxiety": scores["anxiety"],
+            "depression": scores["depression"],
+            "insomnia": scores["insomnia"],
+            "ocd": scores["ocd"],
+        }
+
+        response: SurveyResponse | None = None
+        if require_response:
+            response = SurveyResponse(
+                timestamp=datetime.utcnow().isoformat(),
+                age=age,
+                primary_streaming_service=streaming_service,
+                hours_per_day=hours_per_day,
+                while_working=bool_fields["while_working"],
+                instrumentalist=bool_fields["instrumentalist"],
+                composer=bool_fields["composer"],
+                fav_genre=values["fav_genre"],
+                exploratory=bool_fields["exploratory"],
+                foreign_languages=bool_fields["foreign_languages"],
+                bpm=None,
+                anxiety_score=scores["anxiety"],
+                depression_score=scores["depression"],
+                insomnia_score=scores["insomnia"],
+                ocd_score=scores["ocd"],
+                music_effects=values["music_effects"],
+                genre_frequencies={},
+            )
+
+        return response, typed, values, []
+
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
     def home() -> str:
@@ -239,6 +356,190 @@ def create_app(
             data_quality=data_quality,
             cleaning_rules=cleaning_rules,
         )
+
+    @app.route("/respondents", methods=["GET"])
+    def respondents_list() -> str:
+        """Browse respondents with pagination and filters."""
+        service = _get_service()
+        criteria = _parse_filter_criteria()
+        manager = get_db_manager()
+        page = request.args.get("page", "1")
+        try:
+            page_number = max(int(page), 1)
+        except ValueError:
+            page_number = 1
+        page_size_value = request.args.get("page_size", "10")
+        if page_size_value not in {"10", "25", "50"}:
+            page_size_value = "10"
+        page_size = int(page_size_value)
+        rows, total = manager.get_respondents_page(criteria, page_number, page_size)
+        respondents: List[Dict[str, object]] = []
+        for row in rows:
+            respondents.append(
+                {
+                    "id": row["id"],
+                    "age": row["age"],
+                    "age_group": _age_group_label(row["age"]),
+                    "streaming_service": row["primary_streaming_service"],
+                    "fav_genre": row["fav_genre"] or "Unknown",
+                    "music_effects": row["music_effects"],
+                    "hours_bucket": _hours_bucket_value(row["hours_per_day"]),
+                    "anxiety": row["anxiety"],
+                    "depression": row["depression"],
+                    "insomnia": row["insomnia"],
+                    "ocd": row["ocd"],
+                }
+            )
+        total_pages = max(1, math.ceil(total / page_size)) if page_size else 1
+        base_params = request.args.to_dict(flat=True)
+        base_params.pop("page", None)
+        base_params.pop("page_size", None)
+        pagination_query = urlencode(base_params)
+        filter_options = service.get_filter_options()
+        selected_filters = request.args.to_dict(flat=True)
+        return render_template(
+            "respondents.html",
+            respondents=respondents,
+            page=page_number,
+            page_size=page_size,
+            total_count=total,
+            total_pages=total_pages,
+            pagination_query=pagination_query,
+            filter_options=filter_options,
+            selected_filters=selected_filters,
+            boolean_filters=BOOLEAN_FILTERS,
+            hours_buckets=["<=1", "1-3", ">3"],
+            page_size_value=page_size_value,
+        )
+
+    @app.route("/respondents/new", methods=["GET", "POST"])
+    def respondent_new() -> Response | str:
+        """Create a new respondent record."""
+        errors: List[str] = []
+        form_values = {
+            "age": "",
+            "streaming_service": "",
+            "hours_per_day": "",
+            "fav_genre": "",
+            "music_effects": "",
+            "while_working": "",
+            "instrumentalist": "",
+            "composer": "",
+            "exploratory": "",
+            "foreign_languages": "",
+            "anxiety": "",
+            "depression": "",
+            "insomnia": "",
+            "ocd": "",
+        }
+        if request.method == "POST":
+            response_obj, typed, values, errors = _parse_respondent_form(request.form, require_response=True)
+            form_values = values
+            if not errors and response_obj and typed:
+                manager = get_db_manager()
+                respondent_id = manager.insert_survey_response(response_obj)
+                return redirect(url_for("respondent_detail", respondent_id=respondent_id))
+        return render_template(
+            "respondent_form.html",
+            form_mode="create",
+            submit_label="Create respondent",
+            form_values=form_values,
+            errors=errors,
+            form_action=url_for("respondent_new"),
+        )
+
+    @app.route("/respondents/<int:respondent_id>", methods=["GET"])
+    def respondent_detail(respondent_id: int) -> str:
+        """Display a single respondent record."""
+        manager = get_db_manager()
+        row = manager.get_respondent_with_scores(respondent_id)
+        if row is None:
+            abort(404)
+        respondent = {
+            "id": row["id"],
+            "age": row["age"],
+            "age_group": _age_group_label(row["age"]),
+            "streaming_service": row["primary_streaming_service"],
+            "fav_genre": row["fav_genre"] or "Unknown",
+            "music_effects": row["music_effects"],
+            "hours_per_day": row["hours_per_day"],
+            "hours_bucket": _hours_bucket_value(row["hours_per_day"]),
+            "while_working": bool(row["while_working"]),
+            "instrumentalist": bool(row["instrumentalist"]),
+            "composer": bool(row["composer"]),
+            "exploratory": bool(row["exploratory"]),
+            "foreign_languages": bool(row["foreign_languages"]),
+            "anxiety": row["anxiety"],
+            "depression": row["depression"],
+            "insomnia": row["insomnia"],
+            "ocd": row["ocd"],
+        }
+        return render_template("respondent_detail.html", respondent=respondent)
+
+    @app.route("/respondents/<int:respondent_id>/edit", methods=["GET", "POST"])
+    def respondent_edit(respondent_id: int) -> Response | str:
+        """Edit an existing respondent."""
+        manager = get_db_manager()
+        row = manager.get_respondent_with_scores(respondent_id)
+        if row is None:
+            abort(404)
+        errors: List[str] = []
+        if request.method == "POST":
+            _, typed, values, errors = _parse_respondent_form(request.form, require_response=False)
+            form_values = values
+            if not errors and typed:
+                respondent_data = {
+                    "age": typed["age"],
+                    "streaming_service": typed["streaming_service"],
+                    "hours_per_day": typed["hours_per_day"],
+                    "fav_genre": typed["fav_genre"],
+                    "music_effects": typed["music_effects"],
+                    "while_working": typed["while_working"],
+                    "instrumentalist": typed["instrumentalist"],
+                    "composer": typed["composer"],
+                    "exploratory": typed["exploratory"],
+                    "foreign_languages": typed["foreign_languages"],
+                }
+                score_data = {
+                    "anxiety": typed["anxiety"],
+                    "depression": typed["depression"],
+                    "insomnia": typed["insomnia"],
+                    "ocd": typed["ocd"],
+                }
+                manager.update_respondent_with_scores(respondent_id, respondent_data, score_data)
+                return redirect(url_for("respondent_detail", respondent_id=respondent_id))
+        else:
+            form_values = {
+                "age": str(row["age"]),
+                "streaming_service": row["primary_streaming_service"],
+                "hours_per_day": str(row["hours_per_day"]),
+                "fav_genre": row["fav_genre"] or "",
+                "music_effects": row["music_effects"] or "",
+                "while_working": "yes" if row["while_working"] else "no",
+                "instrumentalist": "yes" if row["instrumentalist"] else "no",
+                "composer": "yes" if row["composer"] else "no",
+                "exploratory": "yes" if row["exploratory"] else "no",
+                "foreign_languages": "yes" if row["foreign_languages"] else "no",
+                "anxiety": str(row["anxiety"]),
+                "depression": str(row["depression"]),
+                "insomnia": str(row["insomnia"]),
+                "ocd": str(row["ocd"]),
+            }
+        return render_template(
+            "respondent_form.html",
+            form_mode="edit",
+            submit_label="Save changes",
+            form_values=form_values,
+            errors=errors,
+            form_action=url_for("respondent_edit", respondent_id=respondent_id),
+        )
+
+    @app.route("/respondents/<int:respondent_id>/delete", methods=["POST"])
+    def respondent_delete(respondent_id: int) -> Response:
+        """Delete a respondent and related health stats."""
+        manager = get_db_manager()
+        manager.delete_respondent_and_health_stats(respondent_id)
+        return redirect(url_for("respondents_list"))
 
     @app.route("/health-impact", methods=["GET"])
     def health_impact() -> str:

@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from src.filters import AGE_GROUP_RULES, FilterCriteria
 from src.models import SurveyResponse
@@ -441,6 +441,133 @@ class DatabaseManager:
         )
         return [row[0] for row in cursor.fetchall()]
 
+    def get_respondents_page(
+        self,
+        criteria: FilterCriteria,
+        page: int,
+        page_size: int,
+    ) -> tuple[List[sqlite3.Row], int]:
+        """Return a paginated list of respondents joined with health stats."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        if page <= 0 or page_size <= 0:
+            raise ValueError("page and page_size must be positive integers")
+        where_clauses, params = self._build_filter_conditions(criteria)
+        base_from = """
+            FROM Respondents
+            INNER JOIN HealthStats ON Respondents.id = HealthStats.respondent_id
+        """
+        where_sql = ""
+        if where_clauses:
+            where_sql = " WHERE " + " AND ".join(where_clauses)
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT COUNT(*) " + base_from + where_sql, params)
+        total = int(cursor.fetchone()[0])
+        offset = (page - 1) * page_size
+        cursor.execute(
+            """
+            SELECT Respondents.id,
+                   Respondents.age,
+                   Respondents.primary_streaming_service,
+                   Respondents.fav_genre,
+                   Respondents.music_effects,
+                   Respondents.hours_per_day,
+                   Respondents.while_working,
+                   Respondents.instrumentalist,
+                   Respondents.composer,
+                   Respondents.exploratory,
+                   Respondents.foreign_languages,
+                   HealthStats.anxiety,
+                   HealthStats.depression,
+                   HealthStats.insomnia,
+                   HealthStats.ocd
+            """
+            + base_from
+            + where_sql
+            + """
+            ORDER BY Respondents.id ASC
+            LIMIT ? OFFSET ?
+            """,
+            params + [page_size, offset],
+        )
+        rows = cursor.fetchall()
+        return rows, total
+
+    def get_respondent_with_scores(self, respondent_id: int) -> Optional[sqlite3.Row]:
+        """Fetch a respondent record joined with health scores."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT Respondents.*, HealthStats.anxiety, HealthStats.depression,
+                   HealthStats.insomnia, HealthStats.ocd
+            FROM Respondents
+            INNER JOIN HealthStats ON Respondents.id = HealthStats.respondent_id
+            WHERE Respondents.id = ?
+            """,
+            (respondent_id,),
+        )
+        return cursor.fetchone()
+
+    def update_respondent_with_scores(
+        self,
+        respondent_id: int,
+        respondent_data: Dict[str, object],
+        score_data: Dict[str, int],
+    ) -> None:
+        """Update respondent demographic fields and associated health scores."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            UPDATE Respondents
+            SET age = ?,
+                primary_streaming_service = ?,
+                hours_per_day = ?,
+                while_working = ?,
+                instrumentalist = ?,
+                composer = ?,
+                fav_genre = ?,
+                exploratory = ?,
+                foreign_languages = ?,
+                music_effects = ?
+            WHERE id = ?
+            """,
+            (
+                respondent_data["age"],
+                respondent_data["streaming_service"],
+                respondent_data["hours_per_day"],
+                int(respondent_data["while_working"]),
+                int(respondent_data["instrumentalist"]),
+                int(respondent_data["composer"]),
+                respondent_data["fav_genre"],
+                int(respondent_data["exploratory"]),
+                int(respondent_data["foreign_languages"]),
+                respondent_data["music_effects"],
+                respondent_id,
+            ),
+        )
+        cursor.execute(
+            """
+            UPDATE HealthStats
+            SET anxiety = ?,
+                depression = ?,
+                insomnia = ?,
+                ocd = ?
+            WHERE respondent_id = ?
+            """,
+            (
+                score_data["anxiety"],
+                score_data["depression"],
+                score_data["insomnia"],
+                score_data["ocd"],
+                respondent_id,
+            ),
+        )
+        self.connection.commit()
+
     def get_clean_responses_filtered(
         self,
         criteria: FilterCriteria,
@@ -481,48 +608,7 @@ class DatabaseManager:
                 ON Respondents.id = HealthStats.respondent_id
             """
         ]
-        where_clauses: List[str] = []
-        params: List[object] = []
-
-        if criteria.age_group:
-            bounds = AGE_GROUP_RULES.get(criteria.age_group)
-            if bounds is not None:
-                min_age, max_age = bounds
-                if min_age is not None:
-                    where_clauses.append("Respondents.age >= ?")
-                    params.append(min_age)
-                if max_age is not None:
-                    where_clauses.append("Respondents.age <= ?")
-                    params.append(max_age)
-
-        if criteria.streaming_service:
-            where_clauses.append("Respondents.primary_streaming_service = ?")
-            params.append(criteria.streaming_service)
-
-        if criteria.favourite_genre:
-            where_clauses.append("Respondents.fav_genre = ?")
-            params.append(criteria.favourite_genre)
-
-        if criteria.music_effects:
-            where_clauses.append("Respondents.music_effects = ?")
-            params.append(criteria.music_effects)
-
-        for attr in (
-            "while_working",
-            "instrumentalist",
-            "composer",
-            "exploratory",
-            "foreign_languages",
-        ):
-            value = getattr(criteria, attr)
-            if value is not None:
-                where_clauses.append(f"Respondents.{attr} = ?")
-                params.append(int(value))
-
-        if criteria.hours_bucket:
-            hours_clauses, hours_params = self._hours_bucket_filters(criteria.hours_bucket)
-            where_clauses.extend(hours_clauses)
-            params.extend(hours_params)
+        where_clauses, params = self._build_filter_conditions(criteria)
 
         if where_clauses:
             query.append("WHERE " + " AND ".join(where_clauses))
@@ -623,3 +709,53 @@ class DatabaseManager:
         cursor.execute(f"SELECT COUNT(*) AS row_count FROM {table}")
         result = cursor.fetchone()
         return int(result["row_count"] if result is not None else 0)
+
+    def _build_filter_conditions(
+        self,
+        criteria: FilterCriteria,
+    ) -> tuple[List[str], List[object]]:
+        """Build WHERE clauses and parameters for filter criteria."""
+        where_clauses: List[str] = []
+        params: List[object] = []
+
+        if criteria.age_group:
+            bounds = AGE_GROUP_RULES.get(criteria.age_group)
+            if bounds is not None:
+                min_age, max_age = bounds
+                if min_age is not None:
+                    where_clauses.append("Respondents.age >= ?")
+                    params.append(min_age)
+                if max_age is not None:
+                    where_clauses.append("Respondents.age <= ?")
+                    params.append(max_age)
+
+        if criteria.streaming_service:
+            where_clauses.append("Respondents.primary_streaming_service = ?")
+            params.append(criteria.streaming_service)
+
+        if criteria.favourite_genre:
+            where_clauses.append("Respondents.fav_genre = ?")
+            params.append(criteria.favourite_genre)
+
+        if criteria.music_effects:
+            where_clauses.append("Respondents.music_effects = ?")
+            params.append(criteria.music_effects)
+
+        for attr in (
+            "while_working",
+            "instrumentalist",
+            "composer",
+            "exploratory",
+            "foreign_languages",
+        ):
+            value = getattr(criteria, attr)
+            if value is not None:
+                where_clauses.append(f"Respondents.{attr} = ?")
+                params.append(int(value))
+
+        if criteria.hours_bucket:
+            hours_clauses, hours_params = self._hours_bucket_filters(criteria.hours_bucket)
+            where_clauses.extend(hours_clauses)
+            params.extend(hours_params)
+
+        return where_clauses, params
