@@ -22,6 +22,9 @@ from src.charts import (
     render_score_distribution_chart,
     render_top_genres_chart,
     render_streaming_counts_png,
+    render_genre_vs_anxiety_chart,
+    render_effects_vs_anxiety_chart,
+    render_hours_vs_scores_chart,
 )
 from src.database import DatabaseManager
 from src.etl_clean import clean_raw_responses_into_database
@@ -212,6 +215,42 @@ def create_app(
         data_quality = _data_quality_snapshot()
         return render_template("data_quality.html", data_quality=data_quality)
 
+    @app.route("/health-impact", methods=["GET"])
+    def health_impact() -> str:
+        """Render focused health impact analytics and charts."""
+        service = _get_service()
+        criteria = _parse_filter_criteria()
+        filter_options = service.get_filter_options()
+        genre_stats = service.get_mean_scores_by_genre(filters=criteria)
+        effect_stats = service.get_mean_scores_by_music_effects(filters=criteria)
+        hours_stats = service.get_mean_scores_by_hours_bucket(filters=criteria)
+        correlations = service.get_correlations_hours_vs_scores(filters=criteria)
+        selected_filters = request.args.to_dict(flat=True)
+        query_string = request.query_string.decode("utf-8")
+
+        def _chart_url(endpoint: str) -> str:
+            base = url_for(endpoint)
+            return f"{base}?{query_string}" if query_string else base
+
+        charts = {
+            "genres": _chart_url("genre_vs_anxiety_chart"),
+            "effects": _chart_url("effects_vs_anxiety_chart"),
+            "hours": _chart_url("hours_vs_scores_chart"),
+        }
+
+        return render_template(
+            "health_impact.html",
+            genre_stats=genre_stats,
+            effect_stats=effect_stats,
+            hours_stats=hours_stats,
+            correlations=correlations,
+            charts=charts,
+            filter_options=filter_options,
+            selected_filters=selected_filters,
+            boolean_filters=BOOLEAN_FILTERS,
+            hours_buckets=["<=1", "1-3", ">3"],
+        )
+
     @app.route("/genre", methods=["GET", "POST"])
     def genre_insights() -> str:
         """
@@ -294,6 +333,30 @@ def create_app(
         criteria = _parse_filter_criteria()
         top_genres = service.get_top_genres(criteria)
         png = render_top_genres_chart(top_genres)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/genre-vs-anxiety.png", methods=["GET"])
+    def genre_vs_anxiety_chart() -> Response:
+        service = _get_service()
+        criteria = _parse_filter_criteria()
+        stats = service.get_mean_scores_by_genre(filters=criteria)
+        png = render_genre_vs_anxiety_chart(stats)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/effects-vs-anxiety.png", methods=["GET"])
+    def effects_vs_anxiety_chart() -> Response:
+        service = _get_service()
+        criteria = _parse_filter_criteria()
+        stats = service.get_mean_scores_by_music_effects(filters=criteria)
+        png = render_effects_vs_anxiety_chart(stats)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/hours-vs-scores.png", methods=["GET"])
+    def hours_vs_scores_chart() -> Response:
+        service = _get_service()
+        criteria = _parse_filter_criteria()
+        stats = service.get_mean_scores_by_hours_bucket(filters=criteria)
+        png = render_hours_vs_scores_chart(stats)
         return Response(png, mimetype="image/png")
 
     @app.route("/export/streaming-csv", methods=["GET"])

@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Health impact</h1>
+<p>Explore associations between listening behaviours and self-reported mental health scores.</p>
+
+<section class="filter-panel">
+  <h2>Filter respondents</h2>
+  <form method="get" class="filter-form">
+    <div class="filter-grid">
+      <label for="age_group">Age group</label>
+      <select id="age_group" name="age_group">
+        <option value="">All age groups</option>
+        {% for group in filter_options.age_groups %}
+        <option value="{{ group }}" {% if selected_filters.get('age_group') == group %}selected{% endif %}>{{ group }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="streaming_service">Streaming service</label>
+      <select id="streaming_service" name="streaming_service">
+        <option value="">All services</option>
+        {% for service in filter_options.streaming_services %}
+        <option value="{{ service }}" {% if selected_filters.get('streaming_service') == service %}selected{% endif %}>{{ service }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="favourite_genre">Favourite genre</label>
+      <select id="favourite_genre" name="favourite_genre">
+        <option value="">All genres</option>
+        {% for genre in filter_options.genres %}
+        <option value="{{ genre }}" {% if selected_filters.get('favourite_genre') == genre %}selected{% endif %}>{{ genre }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="music_effects">Music effects</label>
+      <select id="music_effects" name="music_effects">
+        <option value="">All effects</option>
+        {% for effect in filter_options.music_effects %}
+        <option value="{{ effect }}" {% if selected_filters.get('music_effects') == effect %}selected{% endif %}>{{ effect }}</option>
+        {% endfor %}
+      </select>
+
+      {% for field, label in boolean_filters %}
+      <label for="{{ field }}">{{ label }}</label>
+      <select id="{{ field }}" name="{{ field }}">
+        <option value="">Any</option>
+        <option value="yes" {% if selected_filters.get(field) == 'yes' %}selected{% endif %}>Yes</option>
+        <option value="no" {% if selected_filters.get(field) == 'no' %}selected{% endif %}>No</option>
+      </select>
+      {% endfor %}
+
+      <label for="hours_bucket">Listening hours per day</label>
+      <select id="hours_bucket" name="hours_bucket">
+        <option value="">All ranges</option>
+        {% for bucket in hours_buckets %}
+        <option value="{{ bucket }}" {% if selected_filters.get('hours_bucket') == bucket %}selected{% endif %}>{{ bucket }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit">Apply filters</button>
+      <a class="link-button" href="{{ url_for('health_impact') }}">Clear filters</a>
+    </div>
+  </form>
+</section>
+
+<section class="chart-grid">
+  <div class="chart-card">
+    <h3>Genre vs anxiety</h3>
+    <img src="{{ charts.genres }}" alt="Genre vs anxiety chart" />
+  </div>
+  <div class="chart-card">
+    <h3>Music effects vs anxiety</h3>
+    <img src="{{ charts.effects }}" alt="Effects vs anxiety chart" />
+  </div>
+  <div class="chart-card wide">
+    <h3>Hours vs mental health scores</h3>
+    <img src="{{ charts.hours }}" alt="Hours vs mental health chart" />
+  </div>
+</section>
+
+<section class="data-panels">
+  <div>
+    <h3>Top genres (n ≥5)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Genre</th>
+          <th>N</th>
+          <th>Anxiety</th>
+          <th>Depression</th>
+          <th>Insomnia</th>
+          <th>OCD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in genre_stats %}
+        <tr>
+          <td>{{ row.genre }}</td>
+          <td>{{ row.n }}</td>
+          <td>{{ "%.1f"|format(row.anxiety_mean) }}</td>
+          <td>{{ "%.1f"|format(row.depression_mean) }}</td>
+          <td>{{ "%.1f"|format(row.insomnia_mean) }}</td>
+          <td>{{ "%.1f"|format(row.ocd_mean) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No genre groups with sufficient respondents.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h3>Music effects (n ≥5)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Effect</th>
+          <th>N</th>
+          <th>Anxiety</th>
+          <th>Depression</th>
+          <th>Insomnia</th>
+          <th>OCD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in effect_stats %}
+        <tr>
+          <td>{{ row.effect }}</td>
+          <td>{{ row.n }}</td>
+          <td>{{ "%.1f"|format(row.anxiety_mean) }}</td>
+          <td>{{ "%.1f"|format(row.depression_mean) }}</td>
+          <td>{{ "%.1f"|format(row.insomnia_mean) }}</td>
+          <td>{{ "%.1f"|format(row.ocd_mean) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No effect groups with sufficient respondents.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="data-panels">
+  <div>
+    <h3>Hours bucket summary</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Bucket</th>
+          <th>N</th>
+          <th>Anxiety</th>
+          <th>Depression</th>
+          <th>Insomnia</th>
+          <th>OCD</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in hours_stats %}
+        <tr>
+          <td>{{ row.bucket }}</td>
+          <td>{{ row.n }}</td>
+          <td>{{ "%.1f"|format(row.anxiety_mean) }}</td>
+          <td>{{ "%.1f"|format(row.depression_mean) }}</td>
+          <td>{{ "%.1f"|format(row.insomnia_mean) }}</td>
+          <td>{{ "%.1f"|format(row.ocd_mean) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No hours buckets with sufficient respondents.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <h3>Hours vs score correlations</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>n</th>
+          <th>Pearson r</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for metric, data in correlations.items() %}
+        <tr>
+          <td>{{ metric.title() }}</td>
+          <td>{{ data.n }}</td>
+          <td>
+            {% if data.r is none %}
+            —
+            {% else %}
+            {{ "%.2f"|format(data.r) }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
