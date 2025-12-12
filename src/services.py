@@ -154,3 +154,15 @@ class InsightsService:
         responses = self._get_responses_for(criteria)
         engine = self._get_engine_for(responses)
         return engine.get_top_genres(responses, top_n=top_n)
+
+    @log_action("GET_GENRE_MEANS")
+    def get_genre_means(
+        self,
+        metric: str,
+        criteria: FilterCriteria | None = None,
+        top_n: int = 10,
+    ) -> List[tuple[str, float]]:
+        """Return mean metric scores for the most popular genres."""
+        responses = self._get_responses_for(criteria)
+        engine = self._get_engine_for(responses)
+        return engine.get_genre_means(metric, responses, top_n=top_n)

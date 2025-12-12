@@ -268,6 +268,32 @@ class AnalysisEngine:
         sorted_items = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
         return sorted_items[:top_n]
 
+    def get_genre_means(
+        self,
+        metric: str,
+        responses: List[SurveyResponse] | None = None,
+        top_n: int = 10,
+    ) -> List[tuple[str, float]]:
+        """Return mean scores for the top favourite genres."""
+        if top_n <= 0:
+            raise ValueError("top_n must be a positive integer")
+        dataset = self._resolve_dataset(responses)
+        attr = self._metric_attr(metric)
+
+        values_by_genre: Dict[str, List[int]] = {}
+        for response in dataset:
+            genre = response.fav_genre.strip() or "Unknown"
+            values_by_genre.setdefault(genre, []).append(getattr(response, attr))
+
+        top_genres = self.get_top_genres(responses, top_n=top_n)
+        means: List[tuple[str, float]] = []
+        for genre, _ in top_genres:
+            scores = values_by_genre.get(genre, [])
+            if not scores:
+                continue
+            means.append((genre, sum(scores) / len(scores)))
+        return means
+
     @staticmethod
     def _determine_age_group(age: int) -> str | None:
         """Return the configured age group label for a numeric age."""
