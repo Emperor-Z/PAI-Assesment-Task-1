@@ -131,3 +131,12 @@ class TestInsightsService(unittest.TestCase):
         criteria = FilterCriteria(streaming_service="Spotify")
         filtered = self.service.get_music_effects_counts(criteria)
         self.assertEqual({"Improve": 1}, filtered)
+
+    def test_get_top_genres(self) -> None:
+        """Top genres should return sorted counts and respect top_n."""
+        top = self.service.get_top_genres(top_n=2)
+        self.assertEqual([("Lofi", 1), ("Pop", 1)], top)
+
+        criteria = FilterCriteria(streaming_service="Spotify")
+        filtered = self.service.get_top_genres(criteria, top_n=1)
+        self.assertEqual([("Lofi", 1)], filtered)
