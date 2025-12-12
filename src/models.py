@@ -295,4 +295,47 @@ class AnalysisEngine:
 
 
     def get_hours_per_day_vs_average_anxiety(self) -> Dict[str, float]:
-        raise NotImplementedError
+        """
+        Group respondents into listening-duration buckets and compute
+        the average anxiety score per bucket.
+
+        Bucket scheme (as defined in tests):
+        - "<=1" : hours_per_day <= 1
+        - "1-3" : 1 < hours_per_day <= 3
+        - ">3"  : hours_per_day > 3
+
+        Returns
+        -------
+        Dict[str, float]
+            Mapping from bucket label to average anxiety score.
+        """
+        bucket_totals: Dict[str, int] = {}
+        bucket_counts: Dict[str, int] = {}
+
+        for response in self.responses:
+            bucket = self._bucket_hours(response.hours_per_day)
+            bucket_totals[bucket] = bucket_totals.get(bucket, 0) + response.anxiety_score
+            bucket_counts[bucket] = bucket_counts.get(bucket, 0) + 1
+
+        bucket_averages: Dict[str, float] = {}
+        for bucket, total in bucket_totals.items():
+            count = bucket_counts[bucket]
+            bucket_averages[bucket] = total / count
+
+        return bucket_averages
+   
+    @staticmethod
+    def _bucket_hours(hours: float) -> str:
+        """
+        Assign an hours_per_day value to a named bucket.
+
+        Keeping this logic in a dedicated helper makes it easy to tune
+        the bucketing strategy later (for example, adding more ranges)
+        without changing the aggregation code.
+        """
+        if hours <= 1:
+            return "<=1"
+        if hours <= 3:
+            return "1-3"
+        return ">3"
+
