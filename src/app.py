@@ -13,7 +13,7 @@ import logging
 import os
 from typing import Any, Dict, List, Tuple
 
-from flask import Flask, Response, make_response, render_template, request, url_for
+from flask import Flask, Response, current_app, g, make_response, render_template, request, url_for
 
 from src.charts import (
     render_hours_vs_anxiety_png,
@@ -67,6 +67,31 @@ def _hours_bucket_value(hours: float) -> str:
     return ">3"
 
 
+def get_db_manager() -> DatabaseManager:
+    """
+    Return a request-scoped DatabaseManager stored on flask.g.
+
+    The manager is initialised lazily per request and automatically
+    bootstraps the SQLite database (staging + cleaning) if empty.
+    """
+    manager: DatabaseManager | None = g.get("db_manager")
+    if manager is not None:
+        return manager
+
+    db_path = current_app.config["DB_PATH"]
+    manager = DatabaseManager(db_path)
+    manager.connect()
+    manager.create_tables()
+
+    if manager.get_respondent_count() == 0:
+        csv_path = current_app.config["CSV_PATH"]
+        ingest_csv_into_raw_database(csv_path, manager)
+        clean_raw_responses_into_database(manager)
+
+    g.db_manager = manager
+    return manager
+
+
 def create_app(
     testing: bool = False,
     csv_path: str | None = None,
@@ -113,28 +138,13 @@ def create_app(
     app.config["LOG_PATH"] = log_path
     app.config["DB_PATH"] = db_path
 
-    cached_service: InsightsService | None = None
-    cached_db_manager: DatabaseManager | None = None
-
-    def _build_service() -> InsightsService:
-        """Build an InsightsService using the configured CSV path."""
-        nonlocal cached_service, cached_db_manager
-        if cached_service is not None:
-            return cached_service
-
-        path = app.config["CSV_PATH"]
-        database_path = app.config["DB_PATH"]
-        db_manager = DatabaseManager(database_path)
-        db_manager.connect()
-        db_manager.create_tables()
-
-        if db_manager.get_respondent_count() == 0:
-            ingest_csv_into_raw_database(path, db_manager)
-            clean_raw_responses_into_database(db_manager)
-
-        cached_db_manager = db_manager
-        cached_service = InsightsService(db_manager)
-        return cached_service
+    def _get_service() -> InsightsService:
+        """Return a request-scoped InsightsService bound to the DB manager."""
+        service: InsightsService | None = g.get("insights_service")
+        if service is None:
+            service = InsightsService(get_db_manager())
+            g.insights_service = service
+        return service
 
     def _parse_filter_criteria() -> FilterCriteria:
         """Build filter criteria from query parameters."""
@@ -143,7 +153,7 @@ def create_app(
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
     def home() -> str:
-        service = _build_service()
+        service = _get_service()
         criteria = _parse_filter_criteria()
         filter_options = service.get_filter_options()
         overview = service.get_overview(criteria)
@@ -198,7 +208,7 @@ def create_app(
         genre = request.form.get("genre", "").strip()
         stats = None
         if genre:
-            service = _build_service()
+            service = _get_service()
             service_stats = service.get_average_anxiety_and_depression_by_genre(genre)
             stats = {
                 "genre": service_stats.get("genre", genre),
@@ -211,33 +221,33 @@ def create_app(
 
     @app.route("/streaming", methods=["GET"])
     def streaming_counts() -> str:
-        service = _build_service()
+        service = _get_service()
         counts = service.get_streaming_service_counts()
         return render_template("streaming.html", counts=counts)
 
     @app.route("/hours-vs-anxiety", methods=["GET"])
     def hours_vs_anxiety() -> str:
-        service = _build_service()
+        service = _get_service()
         buckets = service.get_hours_vs_anxiety()
         return render_template("hours_vs_anxiety.html", buckets=buckets)
 
     @app.route("/charts/streaming.png", methods=["GET"])
     def streaming_chart() -> Response:
-        service = _build_service()
+        service = _get_service()
         counts = service.get_streaming_service_counts()
         png = render_streaming_counts_png(counts)
         return Response(png, mimetype="image/png")
 
     @app.route("/charts/hours-vs-anxiety.png", methods=["GET"])
     def hours_vs_anxiety_chart() -> Response:
-        service = _build_service()
+        service = _get_service()
         buckets = service.get_hours_vs_anxiety()
         png = render_hours_vs_anxiety_png(buckets)
         return Response(png, mimetype="image/png")
 
     @app.route("/charts/anxiety-distribution.png", methods=["GET"])
     def anxiety_distribution_chart() -> Response:
-        service = _build_service()
+        service = _get_service()
         criteria = _parse_filter_criteria()
         scores = service.get_score_distribution("anxiety", criteria)
         png = render_score_distribution_chart("Anxiety", scores)
@@ -245,7 +255,7 @@ def create_app(
 
     @app.route("/charts/age-group-means.png", methods=["GET"])
     def age_group_means_chart() -> Response:
-        service = _build_service()
+        service = _get_service()
         criteria = _parse_filter_criteria()
         means = service.get_age_group_means(criteria)
         png = render_age_group_means_chart(means)
@@ -253,7 +263,7 @@ def create_app(
 
     @app.route("/charts/music-effects.png", methods=["GET"])
     def music_effects_chart() -> Response:
-        service = _build_service()
+        service = _get_service()
         criteria = _parse_filter_criteria()
         counts = service.get_music_effects_counts(criteria)
         png = render_music_effects_chart(counts)
@@ -261,7 +271,7 @@ def create_app(
 
     @app.route("/charts/top-genres.png", methods=["GET"])
     def top_genres_chart() -> Response:
-        service = _build_service()
+        service = _get_service()
         criteria = _parse_filter_criteria()
         top_genres = service.get_top_genres(criteria)
         png = render_top_genres_chart(top_genres)
@@ -272,7 +282,7 @@ def create_app(
         """
         Export streaming service usage counts as CSV.
         """
-        service = _build_service()
+        service = _get_service()
         counts = service.get_streaming_service_counts()
 
         lines = ["service,count"]
@@ -288,7 +298,7 @@ def create_app(
     @app.route("/export", methods=["GET"])
     def export_page() -> str:
         """Render a configuration page for data exports."""
-        service = _build_service()
+        service = _get_service()
         filter_options = service.get_filter_options()
         selected_filters = request.args.to_dict(flat=True)
         return render_template(
@@ -303,7 +313,7 @@ def create_app(
     @app.route("/export/data.csv", methods=["GET"])
     def export_filtered_data() -> Response:
         """Export filtered curated responses with configurable columns."""
-        service = _build_service()
+        service = _get_service()
         criteria = _parse_filter_criteria()
         columns_param = request.args.get("columns", "")
         column_args = request.args.getlist("columns")
@@ -368,5 +378,13 @@ def create_app(
         response.headers["Content-Type"] = "text/csv; charset=utf-8"
         response.headers["Content-Disposition"] = "attachment; filename=filtered_responses.csv"
         return response
+
+    @app.teardown_appcontext
+    def close_db_manager(_: Exception | None) -> None:
+        """Close any request-scoped database managers."""
+        manager: DatabaseManager | None = g.pop("db_manager", None)
+        if manager is not None:
+            manager.close()
+        g.pop("insights_service", None)
 
     return app
