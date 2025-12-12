@@ -75,8 +75,8 @@ def create_app(
         implemented in a later TDD step.
         """
         if request.method == "GET":
-            # No stats yet; just show the form.
-            return render_template("genre.html", stats=None)
+            stats: Dict[str, float] | None = None
+            return render_template("genre.html", stats=stats)
 
         # For now, treat POST the same as GET (placeholder).
         return render_template("genre.html", stats=None)
