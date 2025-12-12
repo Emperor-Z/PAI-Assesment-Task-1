@@ -116,6 +116,20 @@ class TestDatabaseManager(unittest.TestCase):
         self.assertEqual(1, respondents_rows)
         self.assertEqual(1, health_rows)
 
+    def test_create_raw_responses_table(self) -> None:
+        """
+        GIVEN create_tables has been run
+        WHEN introspecting RawResponses
+        THEN the expected columns should exist.
+        """
+        cursor = self.db_manager.connection.cursor()
+        cursor.execute("PRAGMA table_info(RawResponses)")
+        columns = cursor.fetchall()
+        column_names = {col[1] for col in columns}
+        self.assertIn("id", column_names)
+        self.assertIn("raw_json", column_names)
+        self.assertIn("ingestion_error", column_names)
+
     def test_health_stats_join_query(self) -> None:
         """
         GIVEN at least one inserted SurveyResponse
