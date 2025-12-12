@@ -60,6 +60,16 @@ class TestWebApp(unittest.TestCase):
         self.assertIn("Total cleaned respondents: 2", baseline.data.decode("utf-8"))
         self.assertIn("Total cleaned respondents: 1", filtered.data.decode("utf-8"))
 
+    def test_home_page_shows_cleaning_kpis(self) -> None:
+        """Home dashboard should expose data quality KPI labels."""
+        response = self.client.get("/")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn("Raw rows", html)
+        self.assertIn("Cleaned rows", html)
+        self.assertIn("Rejected rows", html)
+        self.assertIn("Top rejection reasons", html)
+
     def test_genre_page_shows_form(self) -> None:
         """
         GIVEN the web app
