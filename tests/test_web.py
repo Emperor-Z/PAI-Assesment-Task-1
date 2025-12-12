@@ -245,3 +245,17 @@ class TestWebApp(unittest.TestCase):
 
         body = response.data.decode("utf-8")
         self.assertIn("service,count", body)
+
+    def test_configurable_export_download(self) -> None:
+        """Export endpoint should honour columns and limits."""
+        response = self.client.get("/export/data.csv?columns=age,anxiety_score&limit=1")
+        self.assertEqual(200, response.status_code)
+        self.assertIn("text/csv", response.headers.get("Content-Type", ""))
+        body = response.data.decode("utf-8").strip().splitlines()
+        self.assertEqual("age,anxiety_score", body[0])
+        self.assertEqual(2, len(body))  # header + one row
+
+    def test_configurable_export_rejects_invalid_columns(self) -> None:
+        """Unknown columns should trigger a 400."""
+        response = self.client.get("/export/data.csv?columns=unknown_column")
+        self.assertEqual(400, response.status_code)
