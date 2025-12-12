@@ -272,6 +272,47 @@ class InsightsService:
         rows.sort(key=lambda row: (order.get(row["bucket"], 3), -row["n"]))
         return rows
 
+    @log_action("GET_HOURS_VS_SCORE_CORRELATIONS")
+    def get_correlations_hours_vs_scores(
+        self,
+        filters: FilterCriteria | None = None,
+    ) -> Dict[str, Dict[str, float | int | None]]:
+        """Return Pearson correlations between hours per day and each score."""
+        responses = self._get_responses_for(filters)
+        hours = [resp.hours_per_day for resp in responses]
+        metrics = {
+            "anxiety": [resp.anxiety_score for resp in responses],
+            "depression": [resp.depression_score for resp in responses],
+            "insomnia": [resp.insomnia_score for resp in responses],
+            "ocd": [resp.ocd_score for resp in responses],
+        }
+        results: Dict[str, Dict[str, float | int | None]] = {}
+        for name, values in metrics.items():
+            pairs = [(x, y) for x, y in zip(hours, values) if x is not None and y is not None]
+            n = len(pairs)
+            if n < 2:
+                results[name] = {"n": n, "r": None}
+                continue
+            x_vals, y_vals = zip(*pairs)
+            r = self._pearson_correlation(list(x_vals), list(y_vals))
+            results[name] = {"n": n, "r": r}
+        return results
+
+    @staticmethod
+    def _pearson_correlation(xs: List[float], ys: List[float]) -> float | None:
+        """Compute Pearson correlation coefficient."""
+        n = len(xs)
+        if n < 2:  # pragma: no cover - guarded earlier
+            return None
+        mean_x = sum(xs) / n
+        mean_y = sum(ys) / n
+        cov = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+        denom_x = sum((x - mean_x) ** 2 for x in xs)
+        denom_y = sum((y - mean_y) ** 2 for y in ys)
+        if denom_x == 0 or denom_y == 0:
+            return None
+        return cov / (denom_x ** 0.5 * denom_y ** 0.5)
+
     def _group_mean_stats(
         self,
         responses: List[SurveyResponse],
