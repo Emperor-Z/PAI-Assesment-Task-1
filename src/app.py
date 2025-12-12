@@ -63,6 +63,22 @@ EXPORTABLE_COLUMNS: Dict[str, str] = {
     "music_effects": "music_effects",
     "hours_per_day_bucket": "hours_per_day",  # calculated bucket
 }
+RAW_EXPORT_COLUMNS = ["id", "raw_json", "ingestion_error"]
+REJECTED_EXPORT_COLUMNS = ["reason", "raw_row_id", "raw_payload", "created_at"]
+EXPORT_DATASETS = {
+    "clean": {
+        "label": "Clean respondents",
+        "columns": list(EXPORTABLE_COLUMNS.keys()),
+    },
+    "raw": {
+        "label": "Raw staging rows",
+        "columns": RAW_EXPORT_COLUMNS,
+    },
+    "rejected": {
+        "label": "Rejected rows",
+        "columns": REJECTED_EXPORT_COLUMNS,
+    },
+}
 
 
 def _hours_bucket_value(hours: float) -> str:
@@ -291,6 +307,21 @@ def create_app(
             )
 
         return response, typed, values, []
+
+    def _parse_limit_value(value: str | None) -> int | None:
+        """Parse the export row limit respecting bounds."""
+        if value is None:
+            return 1000
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            parsed = int(stripped)
+        except ValueError:
+            raise ValueError("limit must be an integer between 1 and 5000")
+        if parsed <= 0 or parsed > 5000:
+            raise ValueError("limit must be between 1 and 5000")
+        return parsed
 
     # --- Route definitions will be added next ---
     @app.route("/", methods=["GET"])
@@ -811,83 +842,97 @@ def create_app(
         service = _get_service()
         filter_options = service.get_filter_options()
         selected_filters = request.args.to_dict(flat=True)
+        dataset = selected_filters.get("dataset", "clean")
+        if dataset not in EXPORT_DATASETS:
+            dataset = "clean"
+        available_columns = EXPORT_DATASETS[dataset]["columns"]
+        selected_columns = request.args.getlist("columns") or available_columns
+        limit_value = selected_filters.get("limit", "1000")
         return render_template(
             "export.html",
             filter_options=filter_options,
             selected_filters=selected_filters,
-            export_columns=list(EXPORTABLE_COLUMNS.keys()),
+            available_columns=available_columns,
+            selected_columns=selected_columns,
+            dataset=dataset,
+            dataset_options=EXPORT_DATASETS,
+            limit_value=limit_value,
             boolean_filters=BOOLEAN_FILTERS,
             hours_buckets=["<=1", "1-3", ">3"],
         )
 
-    @app.route("/export/data.csv", methods=["GET"])
-    def export_filtered_data() -> Response:
-        """Export filtered curated responses with configurable columns."""
-        service = _get_service()
-        criteria = _parse_filter_criteria()
-        columns_param = request.args.get("columns", "")
-        column_args = request.args.getlist("columns")
-        if column_args:
-            requested_columns = []
-            for entry in column_args:
-                requested_columns.extend(
-                    [col.strip() for col in entry.split(",") if col.strip()]
-                )
-        elif columns_param:
-            requested_columns = [col.strip() for col in columns_param.split(",") if col.strip()]
-        else:
-            requested_columns = list(EXPORTABLE_COLUMNS.keys())
+    @app.route("/export/download.csv", methods=["GET"])
+    def export_download() -> Response:
+        """Stream CSV exports for clean, raw, or rejected datasets."""
+        dataset = request.args.get("dataset", "clean")
+        if dataset not in EXPORT_DATASETS:
+            return Response("Unknown dataset", status=400)
+        selected_columns = request.args.getlist("columns") or EXPORT_DATASETS[dataset]["columns"]
+        invalid = [col for col in selected_columns if col not in EXPORT_DATASETS[dataset]["columns"]]
+        if invalid:
+            return Response(f"Invalid columns: {', '.join(invalid)}", status=400)
+        try:
+            limit = _parse_limit_value(request.args.get("limit"))
+        except ValueError as exc:
+            return Response(str(exc), status=400)
 
-        if not requested_columns:
-            return Response("At least one column must be selected", status=400)
+        manager = get_db_manager()
 
-        invalid_columns = [col for col in requested_columns if col not in EXPORTABLE_COLUMNS]
-        if invalid_columns:
-            return Response(f"Invalid columns: {', '.join(invalid_columns)}", status=400)
+        def _stream(row_iter: Any) -> Response:
+            def generate() -> Any:
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(selected_columns)
+                yield output.getvalue()
+                output.seek(0)
+                output.truncate(0)
+                for row in row_iter:
+                    writer.writerow(row)
+                    yield output.getvalue()
+                    output.seek(0)
+                    output.truncate(0)
 
-        limit_value = request.args.get("limit")
-        limit: int | None = None
-        if limit_value:
-            try:
-                limit = int(limit_value)
-            except ValueError:
-                return Response("limit must be an integer", status=400)
-            if limit <= 0 or limit > 5000:
-                return Response("limit must be between 1 and 5000", status=400)
+            response = Response(generate(), mimetype="text/csv")
+            response.headers["Content-Type"] = "text/csv; charset=utf-8"
+            response.headers["Content-Disposition"] = f"attachment; filename={dataset}_export.csv"
+            return response
 
-        responses = service.db_manager.get_clean_responses_filtered(criteria, limit=limit)
+        if dataset == "clean":
+            criteria = _parse_filter_criteria()
+            responses = manager.get_clean_responses_filtered(criteria, limit=limit)
+            def row_iter() -> Any:
+                for response in responses:
+                    record: List[Any] = []
+                    for column in selected_columns:
+                        attr = EXPORTABLE_COLUMNS[column]
+                        value = getattr(response, attr)
+                        if column == "hours_per_day_bucket":
+                            value = _hours_bucket_value(getattr(response, attr))
+                        elif isinstance(value, bool):
+                            value = "yes" if value else "no"
+                        elif isinstance(value, dict):
+                            value = json.dumps(value)
+                        elif value is None:
+                            value = ""
+                        record.append(value)
+                    yield record
 
-        buffer = io.StringIO()
-        writer = csv.DictWriter(buffer, fieldnames=requested_columns)
-        writer.writeheader()
-        for response in responses:
-            row: Dict[str, Any] = {}
-            for column in requested_columns:
-                attr = EXPORTABLE_COLUMNS[column]
-                value = getattr(response, attr)
-                if column == "hours_per_day_bucket":
-                    value = _hours_bucket_value(getattr(response, attr))
-                elif isinstance(value, bool):
-                    value = "yes" if value else "no"
-                elif isinstance(value, dict):
-                    value = json.dumps(value)
-                elif value is None:
-                    value = ""
-                row[column] = value
-            writer.writerow(row)
+            return _stream(row_iter())
 
-        logger = logging.getLogger("music_health_app")
-        logger.info(
-            "action=EXPORT_DATA columns=%s limit=%s",
-            ",".join(requested_columns),
-            limit or "all",
-        )
+        if dataset == "raw":
+            raw_rows = manager.get_raw_rows(limit)
+            def row_iter_raw() -> Any:
+                for raw in raw_rows:
+                    yield [raw[column] if raw[column] is not None else "" for column in selected_columns]
 
-        csv_data = buffer.getvalue()
-        response = make_response(csv_data)
-        response.headers["Content-Type"] = "text/csv; charset=utf-8"
-        response.headers["Content-Disposition"] = "attachment; filename=filtered_responses.csv"
-        return response
+            return _stream(row_iter_raw())
+
+        rejected_rows = manager.get_rejected_rows(limit)
+        def row_iter_rejected() -> Any:
+            for rejected in rejected_rows:
+                yield [rejected[column] if rejected[column] is not None else "" for column in selected_columns]
+
+        return _stream(row_iter_rejected())
 
     @app.teardown_appcontext
     def close_db_manager(_: Exception | None) -> None:

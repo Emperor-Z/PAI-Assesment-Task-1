@@ -1,11 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Download curated data</h1>
-<p>Configure the filters, columns, and row limit you need for further analysis.</p>
+<h1>Export datasets</h1>
+<p>Select a dataset, choose columns, and optionally apply filters (clean dataset only) before downloading CSV files.</p>
 
-<form method="get" action="{{ url_for('export_filtered_data') }}" class="filter-form">
+<form method="get" action="{{ url_for('export_download') }}" class="filter-form">
+  <label for="dataset">Select dataset</label>
+  <select id="dataset" name="dataset">
+    {% for key, cfg in dataset_options.items() %}
+    <option value="{{ key }}" {% if dataset == key %}selected{% endif %}>{{ cfg.label }}</option>
+    {% endfor %}
+  </select>
+
   <fieldset>
-    <legend>Filters</legend>
+    <legend>Filters (clean dataset)</legend>
+    <p class="help-text">Filters are applied only when exporting the clean respondents dataset.</p>
     <div class="filter-grid">
       <label for="export_age_group">Age group</label>
       <select id="export_age_group" name="age_group">
@@ -69,20 +77,20 @@
   </fieldset>
 
   <fieldset>
-    <legend>Select columns</legend>
+    <legend>Columns ({{ dataset_options[dataset].label }})</legend>
     <p>Select columns to include in the CSV. All are selected by default.</p>
     <div class="checkbox-grid">
-      {% for column in export_columns %}
+      {% for column in available_columns %}
       <label>
-        <input type="checkbox" name="columns" value="{{ column }}" checked />
+        <input type="checkbox" name="columns" value="{{ column }}" {% if column in selected_columns %}checked{% endif %} />
         {{ column }}
       </label>
       {% endfor %}
     </div>
   </fieldset>
 
-  <label for="limit">Row limit (1-5000)</label>
-  <input type="number" id="limit" name="limit" min="1" max="5000" value="{{ selected_filters.get('limit', '') }}" />
+  <label for="limit">Row limit (1-5000, blank for all)</label>
+  <input type="text" id="limit" name="limit" value="{{ limit_value }}" />
 
   <div class="filter-actions">
     <button type="submit">Download CSV</button>

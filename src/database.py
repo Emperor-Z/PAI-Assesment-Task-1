@@ -357,6 +357,36 @@ class DatabaseManager:
         rows = cursor.fetchall()
         return [json.loads(row[0]) for row in rows]
 
+    def get_raw_rows(self, limit: int | None = None) -> List[sqlite3.Row]:
+        """Return staged raw rows with optional limit."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        query = "SELECT id, raw_json, ingestion_error FROM RawResponses ORDER BY id ASC"
+        params: List[object] = []
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+    def get_rejected_rows(self, limit: int | None = None) -> List[sqlite3.Row]:
+        """Return rejected rows with reasons and payloads."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        query = """
+            SELECT raw_row_id, reason, raw_payload, created_at
+            FROM RejectedRows
+            ORDER BY id ASC
+        """
+        params: List[object] = []
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
     def get_all_clean_responses(self) -> List[SurveyResponse]:
         """
         Return SurveyResponse objects sourced from the curated tables.
