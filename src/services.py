@@ -20,16 +20,26 @@ from src.models import AnalysisEngine, SurveyResponse
 
 @dataclass
 class InsightsService:
-    """Provide analytics-friendly operations backed by curated DB data."""
+    """Provide analytics-friendly operations backed by curated data."""
 
-    db_manager: DatabaseManager
+    data_source: DatabaseManager | List[SurveyResponse]
+    db_manager: DatabaseManager | None = field(default=None, init=False)
     _responses_cache: List[SurveyResponse] | None = field(default=None, init=False)
     _engine: AnalysisEngine | None = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        if isinstance(self.data_source, DatabaseManager):
+            self.db_manager = self.data_source
+        else:
+            self.db_manager = None
+            self._responses_cache = list(self.data_source)
+            self._engine = AnalysisEngine(self._responses_cache)
 
     def _get_responses(self) -> List[SurveyResponse]:
         """Lazy-load SurveyResponse objects from the database."""
         if self._responses_cache is None:
-            self._responses_cache = self.db_manager.get_all_clean_responses()
+            manager = self._require_db_manager()
+            self._responses_cache = manager.get_all_clean_responses()
         return self._responses_cache
 
     def _get_engine(self) -> AnalysisEngine:
@@ -47,13 +57,20 @@ class InsightsService:
     def _get_responses_for(self, criteria: FilterCriteria | None) -> List[SurveyResponse]:
         """Resolve the dataset matching the provided criteria."""
         if criteria and self._criteria_has_filters(criteria):
-            return self.db_manager.get_clean_responses_filtered(criteria)
+            manager = self._require_db_manager()
+            return manager.get_clean_responses_filtered(criteria)
         return self._get_responses()
 
     @staticmethod
     def _criteria_has_filters(criteria: FilterCriteria) -> bool:
         """Determine whether any filter fields are active."""
         return any(value is not None for value in criteria.__dict__.values())
+
+    def _require_db_manager(self) -> DatabaseManager:
+        """Return the DB manager or raise if unavailable."""
+        if self.db_manager is None:
+            raise RuntimeError("Database operations require a DatabaseManager.")
+        return self.db_manager
 
     @log_action("GET_GENRE_MENTAL_HEALTH_STATS")
     def get_average_anxiety_and_depression_by_genre(self, genre: str) -> Dict[str, float]:
@@ -182,9 +199,10 @@ class InsightsService:
     @log_action("GET_FILTER_OPTIONS")
     def get_filter_options(self) -> Dict[str, List[str]]:
         """Return dropdown options for the dashboard filters."""
-        services = self.db_manager.get_distinct_streaming_services()
-        genres = self.db_manager.get_distinct_fav_genres()
-        effects = self.db_manager.get_distinct_music_effects()
+        manager = self._require_db_manager()
+        services = manager.get_distinct_streaming_services()
+        genres = manager.get_distinct_fav_genres()
+        effects = manager.get_distinct_music_effects()
         return {
             "streaming_services": services,
             "genres": genres,

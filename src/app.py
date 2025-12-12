@@ -308,7 +308,11 @@ def create_app(
         columns_param = request.args.get("columns", "")
         column_args = request.args.getlist("columns")
         if column_args:
-            requested_columns = [col.strip() for col in column_args if col.strip()]
+            requested_columns = []
+            for entry in column_args:
+                requested_columns.extend(
+                    [col.strip() for col in entry.split(",") if col.strip()]
+                )
         elif columns_param:
             requested_columns = [col.strip() for col in columns_param.split(",") if col.strip()]
         else:
