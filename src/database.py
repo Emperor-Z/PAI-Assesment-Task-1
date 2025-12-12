@@ -330,6 +330,21 @@ class DatabaseManager:
             responses.append(self._row_to_survey_response(row))
         return responses
 
+    def get_distinct_streaming_services(self) -> List[str]:
+        """Return sorted list of streaming services present in curated data."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT primary_streaming_service
+            FROM Respondents
+            WHERE primary_streaming_service <> ''
+            ORDER BY primary_streaming_service ASC
+            """
+        )
+        return [row[0] for row in cursor.fetchall()]
+
     def get_clean_responses_filtered(
         self,
         criteria: FilterCriteria,
