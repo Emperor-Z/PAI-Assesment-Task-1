@@ -209,3 +209,109 @@ class InsightsService:
             "music_effects": effects,
             "age_groups": list(AGE_GROUP_RULES.keys()),
         }
+
+    @log_action("GET_MEAN_SCORES_BY_GENRE")
+    def get_mean_scores_by_genre(
+        self,
+        top_n: int = 10,
+        min_n: int = 5,
+        filters: FilterCriteria | None = None,
+    ) -> List[Dict[str, Any]]:
+        """Return mean mental health scores grouped by favourite genre."""
+        responses = self._get_responses_for(filters)
+        grouped = self._group_mean_stats(
+            responses,
+            key_func=lambda r: r.fav_genre or "Unknown",
+        )
+        rows = [
+            {"genre": genre, **stats}
+            for genre, stats in grouped.items()
+            if stats["n"] >= min_n
+        ]
+        rows.sort(key=lambda row: (-row["n"], row["genre"]))
+        return rows[:top_n]
+
+    @log_action("GET_MEAN_SCORES_BY_EFFECT")
+    def get_mean_scores_by_music_effects(
+        self,
+        min_n: int = 5,
+        filters: FilterCriteria | None = None,
+    ) -> List[Dict[str, Any]]:
+        """Return mean scores grouped by music effects self-report."""
+        responses = self._get_responses_for(filters)
+        grouped = self._group_mean_stats(
+            responses,
+            key_func=lambda r: r.music_effects or "Unknown",
+        )
+        rows = [
+            {"effect": effect, **stats}
+            for effect, stats in grouped.items()
+            if stats["n"] >= min_n
+        ]
+        rows.sort(key=lambda row: (-row["n"], row["effect"]))
+        return rows
+
+    @log_action("GET_MEAN_SCORES_BY_HOURS_BUCKET")
+    def get_mean_scores_by_hours_bucket(
+        self,
+        min_n: int = 5,
+        filters: FilterCriteria | None = None,
+    ) -> List[Dict[str, Any]]:
+        """Return mean scores grouped by listening hours bucket."""
+        responses = self._get_responses_for(filters)
+        grouped = self._group_mean_stats(
+            responses,
+            key_func=lambda r: self._hours_bucket(r.hours_per_day),
+        )
+        rows = [
+            {"bucket": bucket, **stats}
+            for bucket, stats in grouped.items()
+            if stats["n"] >= min_n
+        ]
+        order = {"<=1": 0, "1-3": 1, ">3": 2}
+        rows.sort(key=lambda row: (order.get(row["bucket"], 3), -row["n"]))
+        return rows
+
+    def _group_mean_stats(
+        self,
+        responses: List[SurveyResponse],
+        key_func,
+    ) -> Dict[str, Dict[str, float]]:
+        """Aggregate responses and calculate mean scores per group."""
+        grouped: Dict[str, Dict[str, float]] = {}
+        for response in responses:
+            key = key_func(response)
+            stats = grouped.setdefault(
+                key,
+                {
+                    "n": 0,
+                    "anxiety_sum": 0.0,
+                    "depression_sum": 0.0,
+                    "insomnia_sum": 0.0,
+                    "ocd_sum": 0.0,
+                },
+            )
+            stats["n"] += 1
+            stats["anxiety_sum"] += response.anxiety_score
+            stats["depression_sum"] += response.depression_score
+            stats["insomnia_sum"] += response.insomnia_score
+            stats["ocd_sum"] += response.ocd_score
+
+        for stats in grouped.values():
+            n = stats["n"] or 1
+            stats["anxiety_mean"] = stats["anxiety_sum"] / n
+            stats["depression_mean"] = stats["depression_sum"] / n
+            stats["insomnia_mean"] = stats["insomnia_sum"] / n
+            stats["ocd_mean"] = stats["ocd_sum"] / n
+            for field in ("anxiety_sum", "depression_sum", "insomnia_sum", "ocd_sum"):
+                stats.pop(field, None)
+        return grouped
+
+    @staticmethod
+    def _hours_bucket(hours: float) -> str:
+        """Map numeric hours into canonical buckets."""
+        if hours <= 1:
+            return "<=1"
+        if hours <= 3:
+            return "1-3"
+        return ">3"
