@@ -40,6 +40,19 @@ class TestHealthImpactWeb(unittest.TestCase):
             self.assertEqual(200, resp.status_code, endpoint)
             self.assertEqual("image/png", resp.headers.get("Content-Type"))
 
+    def test_min_n_control_allows_small_groups(self) -> None:
+        response = self.client.get("/health-impact?min_n=1")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn("min_n", html)
+        self.assertIn("Unknown", html)
+
+    def test_high_min_n_shows_no_data_message(self) -> None:
+        response = self.client.get("/health-impact?min_n=10")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn("No groups meet min_n=10", html)
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
