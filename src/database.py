@@ -36,7 +36,7 @@ class DatabaseManager:
         Stub implementation for now; real logic will be added to
         satisfy unit tests.
         """
-        raise NotImplementedError
+        self.connection = sqlite3.connect(self.db_path)
 
     def create_tables(self) -> None:
         """
