@@ -43,6 +43,22 @@ class TestWebApp(unittest.TestCase):
         html = response.data.decode("utf-8")
         self.assertIn("Music & Mental Health Insights", html)
 
+    def test_home_page_includes_filter_form(self) -> None:
+        """Home page should expose filter dropdowns for analytics."""
+        response = self.client.get("/")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn('name="streaming_service"', html)
+        self.assertIn('name="age_group"', html)
+        self.assertIn("Total cleaned respondents", html)
+
+    def test_home_page_filters_adjust_counts(self) -> None:
+        """Applying filters should change overview totals."""
+        baseline = self.client.get("/")
+        filtered = self.client.get("/?streaming_service=Spotify")
+        self.assertIn("Total cleaned respondents: 2", baseline.data.decode("utf-8"))
+        self.assertIn("Total cleaned respondents: 1", filtered.data.decode("utf-8"))
+
     def test_genre_page_shows_form(self) -> None:
         """
         GIVEN the web app
