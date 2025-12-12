@@ -259,3 +259,12 @@ class TestWebApp(unittest.TestCase):
         """Unknown columns should trigger a 400."""
         response = self.client.get("/export/data.csv?columns=unknown_column")
         self.assertEqual(400, response.status_code)
+
+    def test_export_page_renders_form(self) -> None:
+        """Export configuration page should include filter inputs."""
+        response = self.client.get("/export")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn("Select columns", html)
+        self.assertIn('name="columns"', html)
+        self.assertIn('name="limit"', html)
