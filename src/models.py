@@ -66,13 +66,30 @@ def map_frequency_to_numeric(label: str) -> int:
 
 
 
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+
 @dataclass
 class SurveyResponse:
     """
-    Stub representation of a single survey response.
+    Cleaned, typed representation of a single survey response.
 
-    Real implementation will include validation and a genre_frequencies
-    dictionary. For now, we only define the attributes used by tests.
+    This class is the core domain entity for our tool. It assumes that
+    the incoming data has already been cleaned to a reasonable level,
+    but still enforces type checks as a guard against programming errors.
+
+    Attributes (summary):
+    - timestamp: raw timestamp string.
+    - age: int (years).
+    - primary_streaming_service: main streaming platform.
+    - hours_per_day: float (listening hours per day).
+    - while_working / instrumentalist / composer / exploratory /
+      foreign_languages: booleans.
+    - bpm: int or None.
+    - anxiety_score / depression_score / insomnia_score / ocd_score: ints.
+    - music_effects: short free-text description.
+    - genre_frequencies: dict[genre_name -> frequency_score].
     """
 
     timestamp: str
@@ -93,7 +110,72 @@ class SurveyResponse:
     music_effects: str
     genre_frequencies: Dict[str, int]
 
-    # No __post_init__ yet – tests will drive what we need.
+    def __post_init__(self) -> None:
+        """
+        Validate types and normalise fields after initialisation.
+
+        This method enforces the expectations captured in the unit tests.
+        It follows a 'guard clause' style: we fail early with clear
+        error messages if something looks wrong, rather than allowing
+        inconsistent state into the system.
+        """
+        # --- Scalar type checks ------------------------------------------------
+        if not isinstance(self.age, int):
+            raise TypeError("age must be an int")
+
+        if not isinstance(self.primary_streaming_service, str):
+            raise TypeError("primary_streaming_service must be a str")
+
+        if not isinstance(self.hours_per_day, (int, float)):
+            raise TypeError("hours_per_day must be a number")
+        # Normalise hours_per_day to float internally
+        self.hours_per_day = float(self.hours_per_day)
+
+        # --- Boolean fields ----------------------------------------------------
+        for attr_name in (
+            "while_working",
+            "instrumentalist",
+            "composer",
+            "exploratory",
+            "foreign_languages",
+        ):
+            value = getattr(self, attr_name)
+            if not isinstance(value, bool):
+                raise TypeError(f"{attr_name} must be a bool")
+
+        # --- Mental health scores (0–10) --------------------------------------
+        for attr_name in (
+            "anxiety_score",
+            "depression_score",
+            "insomnia_score",
+            "ocd_score",
+        ):
+            value = getattr(self, attr_name)
+            if not isinstance(value, int):
+                raise TypeError(f"{attr_name} must be an int")
+
+        # --- Optional BPM ------------------------------------------------------
+        if self.bpm is not None and not isinstance(self.bpm, int):
+            raise TypeError("bpm must be an int or None")
+
+        # --- String fields -----------------------------------------------------
+        if not isinstance(self.fav_genre, str):
+            raise TypeError("fav_genre must be a str")
+
+        if not isinstance(self.music_effects, str):
+            raise TypeError("music_effects must be a str")
+
+        # --- Genre frequencies -------------------------------------------------
+        if not isinstance(self.genre_frequencies, dict):
+            raise TypeError("genre_frequencies must be a dict[str, int]")
+
+        for genre, freq in self.genre_frequencies.items():
+            if not isinstance(genre, str):
+                raise TypeError("genre_frequencies keys must be str")
+            if not isinstance(freq, int):
+                raise TypeError(
+                    f"genre_frequencies[{genre!r}] must be an int"
+                )
 
 
 @dataclass
