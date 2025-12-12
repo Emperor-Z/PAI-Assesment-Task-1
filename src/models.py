@@ -241,6 +241,18 @@ class AnalysisEngine:
             }
         return ordered
 
+    def get_music_effects_counts(
+        self,
+        responses: List[SurveyResponse] | None = None,
+    ) -> Dict[str, int]:
+        """Count respondents per music effects label."""
+        dataset = self._resolve_dataset(responses)
+        counts: Dict[str, int] = {}
+        for response in dataset:
+            label = response.music_effects.strip() or "Unknown"
+            counts[label] = counts.get(label, 0) + 1
+        return counts
+
     @staticmethod
     def _determine_age_group(age: int) -> str | None:
         """Return the configured age group label for a numeric age."""

@@ -131,3 +131,13 @@ class InsightsService:
         responses = self._get_responses_for(criteria)
         engine = self._get_engine_for(responses)
         return engine.get_score_distribution(metric, responses)
+
+    @log_action("GET_MUSIC_EFFECTS_COUNTS")
+    def get_music_effects_counts(
+        self,
+        criteria: FilterCriteria | None = None,
+    ) -> Dict[str, int]:
+        """Return counts of music effects descriptions."""
+        responses = self._get_responses_for(criteria)
+        engine = self._get_engine_for(responses)
+        return engine.get_music_effects_counts(responses)
