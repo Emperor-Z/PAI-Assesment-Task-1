@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from typing import Dict
 
 from src.database import DatabaseManager
@@ -19,5 +20,10 @@ def ingest_csv_into_raw_database(csv_path: str, db_manager: DatabaseManager) -> 
                 _row_to_survey_response(row)
             except (ValueError, TypeError) as exc:  # pragma: no cover - covered via tests
                 error = str(exc)
+                db_manager.insert_rejected_row(
+                    source="ingestion",
+                    reason=error,
+                    payload_json=json.dumps(row, ensure_ascii=False),
+                )
             finally:
                 db_manager.insert_raw_response(row, error)

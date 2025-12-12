@@ -98,6 +98,7 @@ class DatabaseManager:
             """
             CREATE TABLE IF NOT EXISTS RejectedRows (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source TEXT NOT NULL DEFAULT 'unknown',
                 raw_row_id INTEGER,
                 reason TEXT NOT NULL,
                 raw_payload TEXT NOT NULL,
@@ -107,6 +108,7 @@ class DatabaseManager:
         )
         self.connection.commit()
         self._ensure_respondent_columns()
+        self._ensure_rejected_columns()
 
     def close(self) -> None:
         """
@@ -320,6 +322,25 @@ class DatabaseManager:
             VALUES (?, ?)
             """,
             (json.dumps(raw_row), error),
+        )
+        self.connection.commit()
+        return int(cursor.lastrowid)
+
+    def insert_rejected_row(self, source: str, reason: str, payload_json: str) -> int:
+        """Persist a rejected row payload with its reason."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        if not source:
+            raise ValueError("source must be provided for rejected rows")
+        if not reason:
+            raise ValueError("reason must be provided for rejected rows")
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO RejectedRows (source, raw_row_id, reason, raw_payload)
+            VALUES (?, NULL, ?, ?)
+            """,
+            (source, reason, payload_json),
         )
         self.connection.commit()
         return int(cursor.lastrowid)
@@ -576,6 +597,12 @@ class DatabaseManager:
         }
         for name, definition in columns.items():
             self._ensure_column_exists("Respondents", name, definition)
+
+    def _ensure_rejected_columns(self) -> None:
+        """Add missing columns for the RejectedRows schema."""
+        if self.connection is None:
+            return
+        self._ensure_column_exists("RejectedRows", "source", "TEXT NOT NULL DEFAULT 'unknown'")
 
     def _ensure_column_exists(self, table: str, column: str, definition: str) -> None:
         """Ensure a specific column exists on a table, adding it if required."""
