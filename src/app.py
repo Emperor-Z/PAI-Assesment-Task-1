@@ -7,9 +7,9 @@ Exposes a simple HTML interface over the InsightsService.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
-from flask import Flask, Response, make_response, render_template, request
+from flask import Flask, Response, make_response, render_template, request, url_for
 
 from src.charts import (
     render_hours_vs_anxiety_png,
@@ -25,6 +25,14 @@ from src.etl_stage import ingest_csv_into_raw_database
 from src.filters import FilterCriteria
 from src.logging_utils import configure_logger
 from src.services import InsightsService
+
+BOOLEAN_FILTERS: List[Tuple[str, str]] = [
+    ("while_working", "While working"),
+    ("exploratory", "Exploratory listener"),
+    ("foreign_languages", "Foreign languages"),
+    ("instrumentalist", "Instrumentalist"),
+    ("composer", "Composer"),
+]
 
 
 def create_app(
@@ -104,13 +112,43 @@ def create_app(
     @app.route("/", methods=["GET"])
     def home() -> str:
         service = _build_service()
-        counts = service.get_streaming_service_counts()
-        total_respondents = sum(counts.values())
-        top_service = max(counts, key=counts.get) if counts else "N/A"
+        criteria = _parse_filter_criteria()
+        filter_options = service.get_filter_options()
+        overview = service.get_overview(criteria)
+        streaming_counts = overview.get("streaming_counts", {})
+        top_services = sorted(
+            streaming_counts.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:5]
+        top_genres = service.get_top_genres(criteria, top_n=5)
+        mean_scores = overview.get("mean_scores", {})
+        selected_filters = request.args.to_dict(flat=True)
+        query_string = request.query_string.decode("utf-8")
+
+        def _chart_url(endpoint: str) -> str:
+            base = url_for(endpoint)
+            return f"{base}?{query_string}" if query_string else base
+
+        charts = {
+            "streaming": _chart_url("streaming_chart"),
+            "hours": _chart_url("hours_vs_anxiety_chart"),
+            "anxiety": _chart_url("anxiety_distribution_chart"),
+            "age_groups": _chart_url("age_group_means_chart"),
+            "music_effects": _chart_url("music_effects_chart"),
+            "top_genres": _chart_url("top_genres_chart"),
+        }
+
         return render_template(
             "home.html",
-            total_respondents=total_respondents,
-            top_service=top_service,
+            overview=overview,
+            filter_options=filter_options,
+            selected_filters=selected_filters,
+            top_services=top_services,
+            top_genres=top_genres,
+            mean_scores=mean_scores,
+            charts=charts,
+            boolean_filters=BOOLEAN_FILTERS,
+            hours_buckets=["<=1", "1-3", ">3"],
         )
 
     @app.route("/genre", methods=["GET", "POST"])

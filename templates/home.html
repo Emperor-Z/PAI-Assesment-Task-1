@@ -7,24 +7,173 @@
   this dashboard.
 </p>
 
-<section>
-  <h2>Overview</h2>
-  <p>Total cleaned respondents: {{ total_respondents }}</p>
-  <p>Top streaming service: {{ top_service }}</p>
+<section class="filter-panel">
+  <h2>Filter respondents</h2>
+  <form method="get" class="filter-form">
+    <div class="filter-grid">
+      <label for="age_group">Age group</label>
+      <select id="age_group" name="age_group">
+        <option value="">All age groups</option>
+        {% for group in filter_options.age_groups %}
+        <option value="{{ group }}" {% if selected_filters.get('age_group') == group %}selected{% endif %}>
+          {{ group }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="streaming_service">Streaming service</label>
+      <select id="streaming_service" name="streaming_service">
+        <option value="">All services</option>
+        {% for service in filter_options.streaming_services %}
+        <option value="{{ service }}" {% if selected_filters.get('streaming_service') == service %}selected{% endif %}>
+          {{ service }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="favourite_genre">Favourite genre</label>
+      <select id="favourite_genre" name="favourite_genre">
+        <option value="">All genres</option>
+        {% for genre in filter_options.genres %}
+        <option value="{{ genre }}" {% if selected_filters.get('favourite_genre') == genre %}selected{% endif %}>
+          {{ genre }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="music_effects">Music effects</label>
+      <select id="music_effects" name="music_effects">
+        <option value="">All effects</option>
+        {% for effect in filter_options.music_effects %}
+        <option value="{{ effect }}" {% if selected_filters.get('music_effects') == effect %}selected{% endif %}>
+          {{ effect }}
+        </option>
+        {% endfor %}
+      </select>
+
+      {% for field, label in boolean_filters %}
+      <label for="{{ field }}">{{ label }}</label>
+      <select id="{{ field }}" name="{{ field }}">
+        <option value="">Any</option>
+        <option value="yes" {% if selected_filters.get(field) == 'yes' %}selected{% endif %}>
+          Yes
+        </option>
+        <option value="no" {% if selected_filters.get(field) == 'no' %}selected{% endif %}>
+          No
+        </option>
+      </select>
+      {% endfor %}
+
+      <label for="hours_bucket">Listening hours per day</label>
+      <select id="hours_bucket" name="hours_bucket">
+        <option value="">All ranges</option>
+        {% for bucket in hours_buckets %}
+        <option value="{{ bucket }}" {% if selected_filters.get('hours_bucket') == bucket %}selected{% endif %}>
+          {{ bucket }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button type="submit">Apply filters</button>
+      <a class="link-button" href="{{ url_for('home') }}">Clear filters</a>
+    </div>
+  </form>
 </section>
 
-<section>
-  <h2>Dashboard</h2>
-  <div>
+<section class="overview-cards">
+  <div class="stat-card">
+    <p>Total cleaned respondents: {{ overview["total_count"] }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Top streaming service</h3>
+    <p>{{ overview["top_streaming_service"] }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average anxiety</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("anxiety", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average depression</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("depression", 0)) }}</p>
+  </div>
+</section>
+
+<section class="chart-grid">
+  <div class="chart-card">
     <h3>Streaming service usage</h3>
-    <img src="{{ url_for('streaming_chart') }}" alt="Streaming usage chart" />
+    <img src="{{ charts.streaming }}" alt="Streaming usage chart" />
+  </div>
+  <div class="chart-card">
+    <h3>Hours vs anxiety</h3>
+    <img src="{{ charts.hours }}" alt="Hours vs anxiety chart" />
+  </div>
+  <div class="chart-card">
+    <h3>Anxiety distribution</h3>
+    <img src="{{ charts.anxiety }}" alt="Anxiety distribution chart" />
+  </div>
+  <div class="chart-card">
+    <h3>Age group mean scores</h3>
+    <img src="{{ charts.age_groups }}" alt="Age group means chart" />
+  </div>
+  <div class="chart-card">
+    <h3>Music effects</h3>
+    <img src="{{ charts.music_effects }}" alt="Music effects chart" />
+  </div>
+  <div class="chart-card">
+    <h3>Top genres</h3>
+    <img src="{{ charts.top_genres }}" alt="Top genres chart" />
+  </div>
+</section>
+
+<section class="data-panels">
+  <div>
+    <h3>Top streaming services</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Service</th>
+          <th>Respondents</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for service, count in top_services %}
+        <tr>
+          <td>{{ service }}</td>
+          <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
   <div>
-    <h3>Listening duration vs average anxiety</h3>
-    <img
-      src="{{ url_for('hours_vs_anxiety_chart') }}"
-      alt="Hours vs anxiety chart"
-    />
+    <h3>Top favourite genres</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Genre</th>
+          <th>Respondents</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for genre, count in top_genres %}
+        <tr>
+          <td>{{ genre }}</td>
+          <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+</section>
+
+<section class="mean-summary">
+  <h3>Mental health summary</h3>
+  <ul>
+    <li>Anxiety: {{ "%.1f"|format(mean_scores.get("anxiety", 0)) }}</li>
+    <li>Depression: {{ "%.1f"|format(mean_scores.get("depression", 0)) }}</li>
+    <li>Insomnia: {{ "%.1f"|format(mean_scores.get("insomnia", 0)) }}</li>
+    <li>OCD: {{ "%.1f"|format(mean_scores.get("ocd", 0)) }}</li>
+  </ul>
 </section>
 {% endblock %}
