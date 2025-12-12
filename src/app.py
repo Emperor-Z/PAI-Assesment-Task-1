@@ -62,8 +62,20 @@ def create_app(
         return "HOME PLACEHOLDER"
 
     @app.route("/genre", methods=["GET", "POST"])
-    def genre_insights() -> str:  # pragma: no cover (stub)
-        return "GENRE PLACEHOLDER"
+    def genre_insights() -> str:
+        """
+        Show a simple form to request genre-based mental health insights.
+
+        In this step we only implement the GET behaviour; POST will be
+        implemented in a later TDD step.
+        """
+        if request.method == "GET":
+            # No stats yet; just show the form.
+            return render_template("genre.html", stats=None)
+
+        # For now, treat POST the same as GET (placeholder).
+        return render_template("genre.html", stats=None)
+
 
     @app.route("/streaming", methods=["GET"])
     def streaming_counts() -> str:  # pragma: no cover (stub)
