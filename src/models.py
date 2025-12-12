@@ -226,7 +226,7 @@ class AnalysisEngine:
         return sum(scores) / len(scores)
 
 
-     def get_average_depression_by_genre(self, genre: str) -> Optional[float]:
+    def get_average_depression_by_genre(self, genre: str) -> Optional[float]:
         """
         Calculate the average depression score for respondents whose
         favourite genre matches the given genre (case-insensitive).
