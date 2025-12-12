@@ -121,3 +121,13 @@ class TestInsightsService(unittest.TestCase):
         criteria = FilterCriteria(streaming_service="Spotify")
         filtered_means = self.service.get_age_group_means(criteria)
         self.assertListEqual(list(filtered_means.keys()), ["18-24"])
+
+    def test_get_music_effects_counts(self) -> None:
+        """Music effects counts should aggregate text values."""
+        counts = self.service.get_music_effects_counts()
+        self.assertEqual(1, counts["Improve"])
+        self.assertEqual(1, counts["No effect"])
+
+        criteria = FilterCriteria(streaming_service="Spotify")
+        filtered = self.service.get_music_effects_counts(criteria)
+        self.assertEqual({"Improve": 1}, filtered)
