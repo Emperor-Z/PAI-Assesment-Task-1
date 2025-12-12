@@ -277,7 +277,22 @@ class AnalysisEngine:
         return counts
 
     def get_users_with_insomnia_score(self, threshold: int) -> List[SurveyResponse]:
-        raise NotImplementedError
+        """
+        Return respondents whose insomnia_score is strictly greater than
+        the given threshold.
+
+        Boundary behaviour is explicitly '>' (not '>=') and is covered
+        by unit tests.
+        """
+        if not isinstance(threshold, int):
+            raise TypeError("threshold must be an int")
+
+        return [
+            response
+            for response in self.responses
+            if response.insomnia_score > threshold
+        ]
+
 
     def get_hours_per_day_vs_average_anxiety(self) -> Dict[str, float]:
         raise NotImplementedError
