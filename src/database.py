@@ -94,6 +94,17 @@ class DatabaseManager:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS RejectedRows (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raw_row_id INTEGER,
+                reason TEXT NOT NULL,
+                raw_payload TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
         self.connection.commit()
         self._ensure_respondent_columns()
 
@@ -172,13 +183,47 @@ class DatabaseManager:
         """
         Return the number of rows in the Respondents table.
         """
+        return self._count_rows("Respondents")
+
+    def get_raw_row_count(self) -> int:
+        """Return total number of staged raw rows."""
+        return self._count_rows("RawResponses")
+
+    def get_clean_row_count(self) -> int:
+        """Return total number of curated respondents."""
+        return self._count_rows("Respondents")
+
+    def get_rejected_row_count(self) -> int:
+        """Return total number of rows captured in RejectedRows."""
+        return self._count_rows("RejectedRows")
+
+    def get_top_rejection_reasons(self, limit: int = 10) -> List[Tuple[str, int]]:
+        """
+        Return the most frequent rejection reasons.
+
+        Parameters
+        ----------
+        limit:
+            Maximum number of reasons to return, must be positive.
+        """
+        if limit <= 0:
+            raise ValueError("limit must be a positive integer")
         if self.connection is None:
             raise RuntimeError("Database connection not established. Call connect() first.")
 
         cursor = self.connection.cursor()
-        cursor.execute("SELECT COUNT(*) FROM Respondents")
-        result = cursor.fetchone()
-        return int(result[0] if result is not None else 0)
+        cursor.execute(
+            """
+            SELECT reason, COUNT(*) AS reason_count
+            FROM RejectedRows
+            GROUP BY reason
+            ORDER BY reason_count DESC, reason ASC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        rows = cursor.fetchall()
+        return [(row["reason"], int(row["reason_count"])) for row in rows]
 
     def get_all_health_stats_joined(self) -> List[Tuple[int, int, int, int, int]]:
         """
@@ -542,3 +587,12 @@ class DatabaseManager:
         if column not in existing:
             cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
             self.connection.commit()
+
+    def _count_rows(self, table: str) -> int:
+        """Return COUNT(*) for a table name that is controlled internally."""
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+        cursor = self.connection.cursor()
+        cursor.execute(f"SELECT COUNT(*) AS row_count FROM {table}")
+        result = cursor.fetchone()
+        return int(result["row_count"] if result is not None else 0)
