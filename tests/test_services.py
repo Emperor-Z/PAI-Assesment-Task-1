@@ -94,3 +94,18 @@ class TestInsightsService(unittest.TestCase):
         self.assertAlmostEqual(4.0, scores["depression"])
         self.assertAlmostEqual(6.0, scores["insomnia"])
         self.assertAlmostEqual(2.0, scores["ocd"])
+
+    def test_get_score_distribution(self) -> None:
+        """Score distribution should cover 0-10 buckets and filters."""
+        distribution = self.service.get_score_distribution("anxiety")
+        self.assertEqual(1, distribution[5])
+        self.assertEqual(1, distribution[3])
+        self.assertEqual(0, distribution[0])
+
+        criteria = FilterCriteria(streaming_service="Spotify")
+        filtered = self.service.get_score_distribution("anxiety", criteria)
+        self.assertEqual(1, filtered[5])
+        self.assertEqual(0, filtered[3])
+
+        with self.assertRaises(ValueError):
+            self.service.get_score_distribution("unknown")
