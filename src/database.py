@@ -8,6 +8,7 @@ can import the class and drive its implementation.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
@@ -217,3 +218,21 @@ class DatabaseManager:
             (respondent_id,),
         )
         self.connection.commit()
+
+    def insert_raw_response(self, raw_row: dict[str, str], error: str | None) -> int:
+        """
+        Store a raw CSV row as JSON for auditing.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO RawResponses (raw_json, ingestion_error)
+            VALUES (?, ?)
+            """,
+            (json.dumps(raw_row), error),
+        )
+        self.connection.commit()
+        return int(cursor.lastrowid)
