@@ -95,3 +95,18 @@ class TestWebApp(unittest.TestCase):
         html = response.data.decode("utf-8")
         self.assertIn("Listening duration vs average anxiety", html)
         self.assertIn("<table", html)
+
+    def test_export_streaming_counts_as_csv(self) -> None:
+        """
+        GIVEN the web app
+        WHEN requesting the streaming counts export endpoint
+        THEN a CSV file should be returned with the expected header.
+        """
+        response = self.client.get("/export/streaming-csv")
+        self.assertEqual(200, response.status_code)
+
+        content_type = response.headers.get("Content-Type", "")
+        self.assertIn("text/csv", content_type)
+
+        body = response.data.decode("utf-8")
+        self.assertIn("service,count", body)
