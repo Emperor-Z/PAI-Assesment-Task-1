@@ -71,6 +71,15 @@ class DatabaseManager:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS RawResponses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                raw_json TEXT NOT NULL,
+                ingestion_error TEXT
+            )
+            """
+        )
         self.connection.commit()
 
     def close(self) -> None:
