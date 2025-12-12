@@ -317,3 +317,18 @@ class TestDatabaseManager(unittest.TestCase):
         spotify_only = FilterCriteria(streaming_service="Spotify")
         limited = self.db_manager.get_clean_responses_filtered(spotify_only, limit=1)
         self.assertEqual(1, len(limited))
+
+    def test_get_distinct_streaming_services(self) -> None:
+        """Distinct streaming services should be sorted and unique."""
+        first = self._make_sample_response()
+        first.primary_streaming_service = "Spotify"
+        second = self._make_sample_response()
+        second.primary_streaming_service = "Apple Music"
+        third = self._make_sample_response()
+        third.primary_streaming_service = "Spotify"
+        self.db_manager.insert_survey_response(first)
+        self.db_manager.insert_survey_response(second)
+        self.db_manager.insert_survey_response(third)
+
+        services = self.db_manager.get_distinct_streaming_services()
+        self.assertEqual(["Apple Music", "Spotify"], services)
