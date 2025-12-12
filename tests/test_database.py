@@ -347,3 +347,18 @@ class TestDatabaseManager(unittest.TestCase):
 
         genres = self.db_manager.get_distinct_fav_genres()
         self.assertEqual(["Lofi", "Rock"], genres)
+
+    def test_get_distinct_music_effects(self) -> None:
+        """Distinct music effects should be sorted and unique."""
+        first = self._make_sample_response()
+        first.music_effects = "Improve"
+        second = self._make_sample_response()
+        second.music_effects = "No effect"
+        third = self._make_sample_response()
+        third.music_effects = "Improve"
+        self.db_manager.insert_survey_response(first)
+        self.db_manager.insert_survey_response(second)
+        self.db_manager.insert_survey_response(third)
+
+        effects = self.db_manager.get_distinct_music_effects()
+        self.assertEqual(["Improve", "No effect"], effects)
