@@ -190,3 +190,21 @@ class DatabaseManager:
             (new_service, respondent_id),
         )
         self.connection.commit()
+
+    def delete_respondent_and_health_stats(self, respondent_id: int) -> None:
+        """
+        Delete a respondent and their related health stats entries.
+        """
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            "DELETE FROM HealthStats WHERE respondent_id = ?",
+            (respondent_id,),
+        )
+        cursor.execute(
+            "DELETE FROM Respondents WHERE id = ?",
+            (respondent_id,),
+        )
+        self.connection.commit()
