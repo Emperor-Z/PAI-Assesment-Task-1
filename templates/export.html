@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Download curated data</h1>
+<p>Configure the filters, columns, and row limit you need for further analysis.</p>
+
+<form method="get" action="{{ url_for('export_filtered_data') }}" class="filter-form">
+  <fieldset>
+    <legend>Filters</legend>
+    <div class="filter-grid">
+      <label for="export_age_group">Age group</label>
+      <select id="export_age_group" name="age_group">
+        <option value="">All age groups</option>
+        {% for group in filter_options.age_groups %}
+        <option value="{{ group }}" {% if selected_filters.get('age_group') == group %}selected{% endif %}>
+          {{ group }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="export_streaming_service">Streaming service</label>
+      <select id="export_streaming_service" name="streaming_service">
+        <option value="">All services</option>
+        {% for service in filter_options.streaming_services %}
+        <option value="{{ service }}" {% if selected_filters.get('streaming_service') == service %}selected{% endif %}>
+          {{ service }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="export_favourite_genre">Favourite genre</label>
+      <select id="export_favourite_genre" name="favourite_genre">
+        <option value="">All genres</option>
+        {% for genre in filter_options.genres %}
+        <option value="{{ genre }}" {% if selected_filters.get('favourite_genre') == genre %}selected{% endif %}>
+          {{ genre }}
+        </option>
+        {% endfor %}
+      </select>
+
+      <label for="export_music_effects">Music effects</label>
+      <select id="export_music_effects" name="music_effects">
+        <option value="">All effects</option>
+        {% for effect in filter_options.music_effects %}
+        <option value="{{ effect }}" {% if selected_filters.get('music_effects') == effect %}selected{% endif %}>
+          {{ effect }}
+        </option>
+        {% endfor %}
+      </select>
+
+      {% for field, label in boolean_filters %}
+      <label for="export_{{ field }}">{{ label }}</label>
+      <select id="export_{{ field }}" name="{{ field }}">
+        <option value="">Any</option>
+        <option value="yes" {% if selected_filters.get(field) == 'yes' %}selected{% endif %}>Yes</option>
+        <option value="no" {% if selected_filters.get(field) == 'no' %}selected{% endif %}>No</option>
+      </select>
+      {% endfor %}
+
+      <label for="export_hours_bucket">Listening hours per day</label>
+      <select id="export_hours_bucket" name="hours_bucket">
+        <option value="">All ranges</option>
+        {% for bucket in hours_buckets %}
+        <option value="{{ bucket }}" {% if selected_filters.get('hours_bucket') == bucket %}selected{% endif %}>
+          {{ bucket }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Select columns</legend>
+    <p>Select columns to include in the CSV. All are selected by default.</p>
+    <div class="checkbox-grid">
+      {% for column in export_columns %}
+      <label>
+        <input type="checkbox" name="columns" value="{{ column }}" checked />
+        {{ column }}
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <label for="limit">Row limit (1-5000)</label>
+  <input type="number" id="limit" name="limit" min="1" max="5000" value="{{ selected_filters.get('limit', '') }}" />
+
+  <div class="filter-actions">
+    <button type="submit">Download CSV</button>
+  </div>
+</form>
+{% endblock %}

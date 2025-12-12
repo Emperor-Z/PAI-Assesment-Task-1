@@ -285,13 +285,31 @@ def create_app(
         response.headers["Content-Disposition"] = "attachment; filename=streaming_counts.csv"
         return response
 
+    @app.route("/export", methods=["GET"])
+    def export_page() -> str:
+        """Render a configuration page for data exports."""
+        service = _build_service()
+        filter_options = service.get_filter_options()
+        selected_filters = request.args.to_dict(flat=True)
+        return render_template(
+            "export.html",
+            filter_options=filter_options,
+            selected_filters=selected_filters,
+            export_columns=list(EXPORTABLE_COLUMNS.keys()),
+            boolean_filters=BOOLEAN_FILTERS,
+            hours_buckets=["<=1", "1-3", ">3"],
+        )
+
     @app.route("/export/data.csv", methods=["GET"])
     def export_filtered_data() -> Response:
         """Export filtered curated responses with configurable columns."""
         service = _build_service()
         criteria = _parse_filter_criteria()
         columns_param = request.args.get("columns", "")
-        if columns_param:
+        column_args = request.args.getlist("columns")
+        if column_args:
+            requested_columns = [col.strip() for col in column_args if col.strip()]
+        elif columns_param:
             requested_columns = [col.strip() for col in columns_param.split(",") if col.strip()]
         else:
             requested_columns = list(EXPORTABLE_COLUMNS.keys())
