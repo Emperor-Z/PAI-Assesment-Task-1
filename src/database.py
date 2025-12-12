@@ -134,4 +134,22 @@ class DatabaseManager:
         Each row is expected to contain:
         (age, anxiety_score, depression_score, insomnia_score, ocd_score)
         """
-        raise NotImplementedError
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            SELECT
+                Respondents.age,
+                HealthStats.anxiety,
+                HealthStats.depression,
+                HealthStats.insomnia,
+                HealthStats.ocd
+            FROM Respondents
+            INNER JOIN HealthStats
+                ON Respondents.id = HealthStats.respondent_id
+            ORDER BY Respondents.id ASC
+            """
+        )
+        return cursor.fetchall()
