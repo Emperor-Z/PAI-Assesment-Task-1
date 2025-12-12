@@ -18,6 +18,7 @@ import unittest
 from typing import Dict
 
 from src.database import DatabaseManager  # type: ignore[import]
+from src.filters import FilterCriteria
 from src.models import SurveyResponse  # type: ignore[import]
 
 
@@ -264,3 +265,55 @@ class TestDatabaseManager(unittest.TestCase):
 
         joined = self.db_manager.get_all_health_stats_joined()
         self.assertEqual(0, len(joined))
+
+    def test_get_filtered_clean_responses(self) -> None:
+        """
+        GIVEN multiple curated respondents
+        WHEN filters are applied
+        THEN only matching SurveyResponse objects should be returned.
+        """
+        teen = self._make_sample_response()
+        teen.age = 17
+        teen.primary_streaming_service = "Spotify"
+        teen.hours_per_day = 1.0
+        teen.while_working = True
+        teen.music_effects = "Improve"
+        self.db_manager.insert_survey_response(teen)
+
+        adult = self._make_sample_response()
+        adult.age = 28
+        adult.primary_streaming_service = "Apple Music"
+        adult.hours_per_day = 4.2
+        adult.while_working = False
+        adult.music_effects = "Improve"
+        adult.fav_genre = "Rock"
+        adult.exploratory = False
+        adult.foreign_languages = False
+        self.db_manager.insert_survey_response(adult)
+
+        older = self._make_sample_response()
+        older.age = 46
+        older.primary_streaming_service = "Spotify"
+        older.hours_per_day = 2.0
+        older.while_working = False
+        older.music_effects = "No effect"
+        older.fav_genre = "Classical"
+        self.db_manager.insert_survey_response(older)
+
+        criteria = FilterCriteria(
+            age_group="25-34",
+            streaming_service="Apple Music",
+            favourite_genre="Rock",
+            music_effects="Improve",
+            while_working=False,
+            hours_bucket=">3",
+        )
+
+        filtered = self.db_manager.get_clean_responses_filtered(criteria)
+        self.assertEqual(1, len(filtered))
+        self.assertEqual("Apple Music", filtered[0].primary_streaming_service)
+        self.assertEqual(4.2, filtered[0].hours_per_day)
+
+        spotify_only = FilterCriteria(streaming_service="Spotify")
+        limited = self.db_manager.get_clean_responses_filtered(spotify_only, limit=1)
+        self.assertEqual(1, len(limited))
