@@ -87,7 +87,33 @@ class DatabaseManager:
         Stub implementation for now; will be implemented using
         parameterised queries.
         """
-        raise NotImplementedError
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            INSERT INTO Respondents (age, primary_streaming_service)
+            VALUES (?, ?)
+            """,
+            (response.age, response.primary_streaming_service),
+        )
+        respondent_id = cursor.lastrowid
+        cursor.execute(
+            """
+            INSERT INTO HealthStats (respondent_id, anxiety, depression, insomnia, ocd)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                respondent_id,
+                response.anxiety_score,
+                response.depression_score,
+                response.insomnia_score,
+                response.ocd_score,
+            ),
+        )
+        self.connection.commit()
+        return int(respondent_id)
 
     def get_respondent_count(self) -> int:
         """
