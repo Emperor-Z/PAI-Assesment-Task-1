@@ -89,3 +89,21 @@ def render_age_group_means_chart(means: Dict[str, Dict[str, float]]) -> bytes:
     plt.close(fig)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def render_music_effects_chart(counts: Dict[str, int]) -> bytes:
+    """Render a bar chart for music effects labels."""
+    labels = list(counts.keys()) or ["No data"]
+    values = [counts.get(label, 0) for label in labels]
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.barh(labels, values, color="#F79646")
+    ax.set_xlabel("Respondents")
+    ax.set_title("Music effects reported")
+    fig.tight_layout()
+
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()

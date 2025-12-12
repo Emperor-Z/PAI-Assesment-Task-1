@@ -14,6 +14,7 @@ from flask import Flask, Response, make_response, render_template, request
 from src.charts import (
     render_hours_vs_anxiety_png,
     render_age_group_means_chart,
+    render_music_effects_chart,
     render_score_distribution_chart,
     render_streaming_counts_png,
 )
@@ -177,6 +178,14 @@ def create_app(
         criteria = _parse_filter_criteria()
         means = service.get_age_group_means(criteria)
         png = render_age_group_means_chart(means)
+        return Response(png, mimetype="image/png")
+
+    @app.route("/charts/music-effects.png", methods=["GET"])
+    def music_effects_chart() -> Response:
+        service = _build_service()
+        criteria = _parse_filter_criteria()
+        counts = service.get_music_effects_counts(criteria)
+        png = render_music_effects_chart(counts)
         return Response(png, mimetype="image/png")
 
     @app.route("/export/streaming-csv", methods=["GET"])
