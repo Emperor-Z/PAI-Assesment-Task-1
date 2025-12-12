@@ -11,15 +11,59 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 
+from dataclasses import dataclass
+from typing import Dict, List, Optional
+
+
+# --- Frequency mapping helper ------------------------------------------------
+
+FREQUENCY_MAPPING: Dict[str, int] = {
+    "never": 0,
+    "rarely": 1,
+    "sometimes": 2,
+    "very frequently": 3,
+}
+
+
 def map_frequency_to_numeric(label: str) -> int:
     """
-    Stub implementation.
+    Convert a textual listening frequency label into a numeric score.
 
-    Real implementation will convert labels like "Rarely" or
-    "Very frequently" into integer codes. For now, we raise
-    NotImplementedError so tests can drive the behaviour.
+    Mapping:
+    - "Never"           -> 0
+    - "Rarely"          -> 1
+    - "Sometimes"       -> 2
+    - "Very frequently" -> 3
+
+    Behaviour:
+    - Ignores leading/trailing spaces.
+    - Case-insensitive.
+    - Fails fast on unknown or empty labels.
+
+    Raises
+    ------
+    TypeError
+        If label is not a string.
+    ValueError
+        If label is empty or not recognised.
     """
-    raise NotImplementedError("map_frequency_to_numeric is not implemented yet")
+    # Guard clause: wrong type
+    if not isinstance(label, str):
+        raise TypeError(f"label must be a str, got {type(label).__name__}")
+
+    # Normalise: strip spaces and lowercase
+    normalised = label.strip().lower()
+    if not normalised:
+        # Guard clause: empty after stripping
+        raise ValueError("Frequency label must not be empty")
+
+    # Look up in mapping table
+    if normalised not in FREQUENCY_MAPPING:
+        # Fail fast on unknown values to make data issues visible
+        raise ValueError(f"Unknown frequency label: {label!r}")
+
+    return FREQUENCY_MAPPING[normalised]
+
 
 
 @dataclass
