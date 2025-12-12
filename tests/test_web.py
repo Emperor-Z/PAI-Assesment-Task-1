@@ -70,6 +70,15 @@ class TestWebApp(unittest.TestCase):
         self.assertIn("Rejected rows", html)
         self.assertIn("Top rejection reasons", html)
 
+    def test_data_quality_page_renders_counts_and_reasons(self) -> None:
+        """Dedicated data quality view should show counts and rejection reasons."""
+        response = self.client.get("/data-quality")
+        self.assertEqual(200, response.status_code)
+        html = response.data.decode("utf-8")
+        self.assertIn("Data quality overview", html)
+        self.assertIn("Raw rows", html)
+        self.assertIn("Top rejection reasons", html)
+
     def test_genre_page_shows_form(self) -> None:
         """
         GIVEN the web app
