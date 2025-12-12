@@ -109,3 +109,15 @@ class TestInsightsService(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.service.get_score_distribution("unknown")
+
+    def test_get_age_group_means(self) -> None:
+        """Age group means should bucket respondents by age."""
+        means = self.service.get_age_group_means()
+        self.assertIn("18-24", means)
+        self.assertIn("25-34", means)
+        self.assertAlmostEqual(5.0, means["18-24"]["anxiety"])
+        self.assertAlmostEqual(3.0, means["25-34"]["anxiety"])
+
+        criteria = FilterCriteria(streaming_service="Spotify")
+        filtered_means = self.service.get_age_group_means(criteria)
+        self.assertListEqual(list(filtered_means.keys()), ["18-24"])
