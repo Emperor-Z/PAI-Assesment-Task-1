@@ -44,7 +44,33 @@ class DatabaseManager:
 
         Stub implementation; tests expect this to be idempotent.
         """
-        raise NotImplementedError
+        if self.connection is None:
+            raise RuntimeError("Database connection not established. Call connect() first.")
+
+        cursor = self.connection.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS Respondents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                age INTEGER NOT NULL,
+                primary_streaming_service TEXT NOT NULL
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS HealthStats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                respondent_id INTEGER NOT NULL,
+                anxiety INTEGER NOT NULL,
+                depression INTEGER NOT NULL,
+                insomnia INTEGER NOT NULL,
+                ocd INTEGER NOT NULL,
+                FOREIGN KEY (respondent_id) REFERENCES Respondents(id)
+            )
+            """
+        )
+        self.connection.commit()
 
     def close(self) -> None:
         """
