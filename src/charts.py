@@ -60,3 +60,32 @@ def render_score_distribution_chart(metric_label: str, distribution: Dict[int, i
     plt.close(fig)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+def render_age_group_means_chart(means: Dict[str, Dict[str, float]]) -> bytes:
+    """Render grouped bar chart for age bucket mean scores."""
+    metrics = ["anxiety", "depression", "insomnia", "ocd"]
+    colors = ["#4F81BD", "#C0504D", "#9BBB59", "#8064A2"]
+    groups = list(means.keys()) or ["No data"]
+
+    fig, ax = plt.subplots(figsize=(8, 4.5))
+    indices = range(len(groups))
+    width = 0.18
+
+    for idx, metric in enumerate(metrics):
+        offsets = [i + (idx - 1.5) * width for i in indices]
+        values = [means.get(group, {}).get(metric, 0.0) for group in groups]
+        ax.bar(offsets, values, width=width, label=metric.title(), color=colors[idx])
+
+    ax.set_xticks(list(indices))
+    ax.set_xticklabels(groups, rotation=20, ha="right")
+    ax.set_ylabel("Average score")
+    ax.set_title("Age group mean scores")
+    ax.legend()
+    fig.tight_layout()
+
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format="png")
+    plt.close(fig)
+    buffer.seek(0)
+    return buffer.getvalue()
