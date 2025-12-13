@@ -15,6 +15,9 @@ main {
 nav {
   background-color: #1f3a93;
   padding: 0.75rem 1rem;
+}
+
+.nav-links {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -135,6 +138,14 @@ td {
   margin-bottom: 1.5rem;
 }
 
+.hero-panel {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  margin-bottom: 1.5rem;
+}
+
 .data-quality-panel {
   background: #ffffff;
   border-radius: 8px;
@@ -169,6 +180,18 @@ td {
   margin-top: 0.5rem;
 }
 
+.table-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  margin-bottom: 1.5rem;
+}
+
+.table-card h3 {
+  margin-top: 0;
+}
+
 .actions-bar {
   display: flex;
   gap: 0.75rem;
@@ -186,6 +209,10 @@ td {
   text-decoration: none;
 }
 
+.button.secondary {
+  background: #475569;
+}
+
 .inline-form {
   display: inline-block;
   margin: 0;
@@ -197,6 +224,39 @@ td {
   color: #1f3a93;
   cursor: pointer;
   padding: 0;
+}
+
+.table-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.table-actions a,
+.table-actions button {
+  font-size: 0.85rem;
+  background: #f1f5f9;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  text-decoration: none;
+  border: 1px solid #cbd5e1;
+}
+
+.table-actions a {
+  color: #1f3a93;
+}
+
+.table-actions button {
+  color: #b91c1c;
+  border-color: #f87171;
+}
+
+.summary-panel {
+  background: #f5f8ff;
+  border-radius: 8px;
+  border: 1px solid #bcd0ff;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .error-panel,

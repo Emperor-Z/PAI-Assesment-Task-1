@@ -3,6 +3,25 @@
 <h1>Health impact</h1>
 <p>Explore associations between listening behaviours and self-reported mental health scores.</p>
 
+<section class="hero-panel">
+  {% set leading_genre = genre_stats[0] if genre_stats else None %}
+  {% set leading_effect = effect_stats[0] if effect_stats else None %}
+  <p>
+    This page focuses on the mental-health impact of music behaviours. Results are descriptive:
+    they show how averages shift across genres, perceived music effects, and listening hours.
+  </p>
+  {% if leading_genre %}
+  <p>
+    Currently, <strong>{{ leading_genre.genre }}</strong> respondents average
+    anxiety {{ "%.1f"|format(leading_genre.anxiety_mean) }} with n={{ leading_genre.n }},
+    while {{ leading_effect.effect if leading_effect else "the leading effect group" }} respondents
+    report anxiety {{ "%.1f"|format(leading_effect.anxiety_mean) if leading_effect else "—" }}.
+  </p>
+  {% else %}
+  <p>No genre groups meet the selected filters yet. Lower min_n or clear filters to surface trends.</p>
+  {% endif %}
+</section>
+
 <section class="filter-panel">
   <h2>Filter respondents</h2>
   <form method="get" class="filter-form">
@@ -70,30 +89,6 @@
       <a class="link-button" href="{{ url_for('health_impact') }}">Clear filters</a>
     </div>
   </form>
-</section>
-
-<section class="chart-grid">
-  <div class="chart-card">
-    <h3>Genre vs anxiety</h3>
-    <img src="{{ charts.genres }}" alt="Genre vs anxiety chart" />
-    {% if not genre_stats %}
-    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
-    {% endif %}
-  </div>
-  <div class="chart-card">
-    <h3>Music effects vs anxiety</h3>
-    <img src="{{ charts.effects }}" alt="Effects vs anxiety chart" />
-    {% if not effect_stats %}
-    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
-    {% endif %}
-  </div>
-  <div class="chart-card wide">
-    <h3>Hours vs mental health scores</h3>
-    <img src="{{ charts.hours }}" alt="Hours vs mental health chart" />
-    {% if not hours_stats %}
-    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
-    {% endif %}
-  </div>
 </section>
 
 <section class="data-panels">
@@ -213,6 +208,33 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</section>
+
+<section class="chart-grid">
+  <div class="chart-card">
+    <h3>Genre vs anxiety</h3>
+    {% if genre_stats %}
+    <img src="{{ charts.genres }}" alt="Genre vs anxiety chart" />
+    {% else %}
+    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
+    {% endif %}
+  </div>
+  <div class="chart-card">
+    <h3>Music effects vs anxiety</h3>
+    {% if effect_stats %}
+    <img src="{{ charts.effects }}" alt="Effects vs anxiety chart" />
+    {% else %}
+    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
+    {% endif %}
+  </div>
+  <div class="chart-card wide">
+    <h3>Hours vs mental health scores</h3>
+    {% if hours_stats %}
+    <img src="{{ charts.hours }}" alt="Hours vs mental health chart" />
+    {% else %}
+    <p class="no-data">No groups meet min_n={{ selected_min_n }} under current filters. Try lowering min_n or clearing filters.</p>
+    {% endif %}
   </div>
 </section>
 

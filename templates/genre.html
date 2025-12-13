@@ -1,6 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Genre deep dive</h1>
+<section class="hero-panel">
+  <p>
+    Compare a single favourite genre against the overall cleaned cohort. Use the deltas below to
+    explain how respondents who prefer that genre report anxiety, depression, insomnia, and OCD scores.
+  </p>
+  {% if genre_options|length <= 1 %}
+  <p class="warning">
+    Only {{ genre_options|length }} distinct genre recorded in the filtered dataset. This is usually due
+    to tight filters or small cohorts—clear filters or lower min_n to unlock more comparisons.
+  </p>
+  {% else %}
+  <p>{{ genre_options|length }} genres currently satisfy the filters.</p>
+  {% endif %}
+</section>
+
 <form method="get" class="filter-form">
   <div class="filter-grid">
     <label for="genre">Genre</label>
@@ -51,12 +66,23 @@
       <h3>{{ metric_lookup[selected_metric] }} distribution ({{ selected_genre }})</h3>
       {% if chart_url %}
       <img src="{{ chart_url }}" alt="Genre distribution chart" />
+      {% else %}
+      <p class="no-data">Distribution chart unavailable for this selection, but the summary above still applies.</p>
       {% endif %}
     </section>
   {% else %}
     <p class="no-data">No respondents recorded for {{ selected_genre }}.</p>
   {% endif %}
 {% else %}
-  <p>Select a genre to view mental health statistics and score distributions.</p>
+  <section class="stat-card">
+    <h2>Overall averages</h2>
+    <p>Select a genre to view mental health statistics and score distributions.</p>
+    <ul>
+      <li>Anxiety mean: {{ "%.1f"|format(overall_means.get("anxiety", 0)) }}</li>
+      <li>Depression mean: {{ "%.1f"|format(overall_means.get("depression", 0)) }}</li>
+      <li>Insomnia mean: {{ "%.1f"|format(overall_means.get("insomnia", 0)) }}</li>
+      <li>OCD mean: {{ "%.1f"|format(overall_means.get("ocd", 0)) }}</li>
+    </ul>
+  </section>
 {% endif %}
 {% endblock %}

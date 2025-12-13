@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Data quality overview</h1>
-<p>
-  Counts below summarise the pipeline from raw CSV rows through cleaning.
-</p>
+<section class="hero-panel">
+  <p>
+    This page exists for transparency. It proves that every CSV row is staged, validated, and either
+    curated into the respondents tables or captured as a rejected record with an audit trail.
+  </p>
+  <p>
+    Share it during assessment to show that insights are grounded in a reproducible pipeline rather than ad‑hoc Excel work.
+  </p>
+</section>
 
 <section class="data-quality-panel">
   <div class="dq-cards">

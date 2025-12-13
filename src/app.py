@@ -690,7 +690,8 @@ def create_app(
     def streaming_counts() -> str:
         service = _get_service()
         counts = service.get_streaming_service_counts()
-        return render_template("streaming.html", counts=counts)
+        hours_summary = service.get_hours_vs_anxiety()
+        return render_template("streaming.html", counts=counts, hours_summary=hours_summary)
 
     @app.route("/hours-vs-anxiety", methods=["GET"])
     def hours_vs_anxiety() -> str:

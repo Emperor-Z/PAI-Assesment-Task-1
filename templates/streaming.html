@@ -1,23 +1,77 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Streaming service usage</h1>
-<p>Counts are derived from the current dataset.</p>
+<h1>Listening platform usage</h1>
+<section class="hero-panel">
+  {% set total = counts.values()|sum %}
+  <p>
+    Streaming preferences provide context for the mental-health metrics on other pages.
+    This view lists every platform represented in the cleaned dataset ({{ total }} respondents).
+  </p>
+  <p>
+    Usage counts remain available even for very small samples; interpret the companion chart and hours table
+    alongside the respondent total to avoid over-claiming trends.
+  </p>
+</section>
 
-<table border="1">
+<div class="actions-bar">
+  <a class="button" href="{{ url_for('export_streaming_csv') }}">Download usage CSV</a>
+  <a class="button secondary" href="{{ url_for('hours_vs_anxiety') }}">Open hours vs anxiety</a>
+</div>
+
+<section class="table-card">
+  <h3>Streaming service usage</h3>
+  <table>
     <thead>
-        <tr>
-            <th>Streaming service</th>
-            <th>Respondent count</th>
-        </tr>
+      <tr>
+        <th>Streaming service</th>
+        <th>Respondent count</th>
+      </tr>
     </thead>
     <tbody>
-        {% for service, count in counts.items() %}
-        <tr>
-            <td>{{ service }}</td>
-            <td>{{ count }}</td>
-        </tr>
-        {% endfor %}
+      {% for service, count in counts.items() %}
+      <tr>
+        <td>{{ service }}</td>
+        <td>{{ count }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">No streaming data available under current filters.</td></tr>
+      {% endfor %}
     </tbody>
-</table>
+  </table>
+</section>
+
+<section class="chart-card">
+  <h3>Usage share</h3>
+  {% if counts %}
+  <img src="{{ url_for('streaming_chart') }}" alt="Streaming usage chart" />
+  {% else %}
+  <p class="no-data">No counts to plot. Expand filters to compare services.</p>
+  {% endif %}
+</section>
+
+<section class="table-card">
+  <h3>Listening duration vs anxiety (summary)</h3>
+  <p>
+    Use the dedicated hours page for full commentary; this table keeps the key buckets visible alongside usage stats.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Hours per day bucket</th>
+        <th>Average anxiety</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for bucket, value in hours_summary.items() %}
+      <tr>
+        <td>{{ bucket }}</td>
+        <td>{{ value }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">No hours data available.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
 {% endblock %}

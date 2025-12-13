@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Respondents</h1>
-<p>
-  Browse cleaned respondents with filters and pagination. Use the actions column to view, edit, or delete records.
-</p>
+<h1>Respondent records</h1>
+<section class="hero-panel">
+  <p>
+    This is the governed CRUD surface for the curated respondents table. Use it for audits, manual corrections,
+    or to seed tiny scenarios when demonstrating filters and analytics.
+  </p>
+  <p class="help-text">
+    Actions are logged by the backend. Prefer editing rather than deleting so that the ETL remains reproducible.
+  </p>
+</section>
 <div class="filter-panel">
   <h2>Filter respondents</h2>
   <form method="get" class="filter-form">
@@ -105,11 +111,13 @@
       <td>{{ respondent.insomnia }}</td>
       <td>{{ respondent.ocd }}</td>
       <td>
-        <a href="{{ url_for('respondent_detail', respondent_id=respondent.id) }}">View</a> |
-        <a href="{{ url_for('respondent_edit', respondent_id=respondent.id) }}">Edit</a> |
-        <form method="post" action="{{ url_for('respondent_delete', respondent_id=respondent.id) }}" class="inline-form">
-          <button type="submit">Delete</button>
-        </form>
+        <div class="table-actions">
+          <a href="{{ url_for('respondent_detail', respondent_id=respondent.id) }}">View</a>
+          <a href="{{ url_for('respondent_edit', respondent_id=respondent.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('respondent_delete', respondent_id=respondent.id) }}" class="inline-form">
+            <button type="submit">Delete</button>
+          </form>
+        </div>
       </td>
     </tr>
     {% else %}

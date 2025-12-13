@@ -1,11 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Music & Mental Health Insights</h1>
-<p>
-  Explore listening habits and wellbeing statistics derived from the cleaned
-  survey dataset. Invalid rows are safely staged and dropped before reaching
-  this dashboard.
-</p>
+<section class="hero-panel">
+  <p>
+    This dashboard summarises {{ overview["total_count"] }} cleaned responses from the
+    Music & Mental Health survey. Use it to understand how listening habits, genres, and
+    self-reported wellbeing interact after the ETL pipeline removes invalid entries.
+  </p>
+  <p>
+    KPIs below highlight high-level trends before diving into filters, drilldowns, and exports.
+    Keep an eye on the context note at the bottom for interpretation guidance.
+  </p>
+</section>
+
+<section class="overview-cards">
+  <div class="stat-card">
+    <p>Total cleaned respondents: {{ overview["total_count"] }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Top streaming service</h3>
+    <p>{{ overview["top_streaming_service"] }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average anxiety</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("anxiety", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average depression</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("depression", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average insomnia</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("insomnia", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Average OCD</h3>
+    <p>{{ "%.1f"|format(mean_scores.get("ocd", 0)) }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Top favourite genre</h3>
+    <p>{{ top_genre_name }}</p>
+  </div>
+  <div class="stat-card">
+    <h3>Rejected rows</h3>
+    <p>{{ data_quality.rejected }}</p>
+  </div>
+</section>
 
 <section class="filter-panel">
   <h2>Filter respondents</h2>
@@ -88,40 +128,6 @@
       <a class="link-button" href="{{ url_for('home') }}">Clear filters</a>
     </div>
   </form>
-</section>
-
-<section class="overview-cards">
-  <div class="stat-card">
-    <p>Total cleaned respondents: {{ overview["total_count"] }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Top streaming service</h3>
-    <p>{{ overview["top_streaming_service"] }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Average anxiety</h3>
-    <p>{{ "%.1f"|format(mean_scores.get("anxiety", 0)) }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Average depression</h3>
-    <p>{{ "%.1f"|format(mean_scores.get("depression", 0)) }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Average insomnia</h3>
-    <p>{{ "%.1f"|format(mean_scores.get("insomnia", 0)) }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Average OCD</h3>
-    <p>{{ "%.1f"|format(mean_scores.get("ocd", 0)) }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Top favourite genre</h3>
-    <p>{{ top_genre_name }}</p>
-  </div>
-  <div class="stat-card">
-    <h3>Rejected rows</h3>
-    <p>{{ data_quality.rejected }}</p>
-  </div>
 </section>
 
 <section class="data-quality-panel">

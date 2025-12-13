@@ -1,9 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Export datasets</h1>
-<p>Select a dataset, choose columns, and optionally apply filters (clean dataset only) before downloading CSV files.</p>
+<section class="hero-panel">
+  <p>
+    Use this workspace to hand markers a CSV that matches the story you told on the dashboard.
+    There are two flows:
+  </p>
+  <ol>
+    <li><strong>Export full cleaned dataset</strong> – one-click download of every cleaned column.</li>
+    <li><strong>Export filtered selection</strong> – choose dataset, columns, filters, and limits for targeted extracts.</li>
+  </ol>
+</section>
+
+<section class="table-card">
+  <h3>Full cleaned dataset</h3>
+  <p>The quickest way to share the governed dataset with reviewers. Filters do not apply here.</p>
+  <a class="button" href="{{ url_for('export_download') }}?dataset=clean">Download entire clean table</a>
+</section>
 
 <form method="get" action="{{ url_for('export_download') }}" class="filter-form">
+  <p><strong>Filtered export:</strong> adjust the controls below. Filters only affect the clean dataset.</p>
   <label for="dataset">Select dataset</label>
   <select id="dataset" name="dataset">
     {% for key, cfg in dataset_options.items() %}

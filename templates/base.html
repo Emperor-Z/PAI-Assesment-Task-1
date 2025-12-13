@@ -7,15 +7,16 @@
   </head>
   <body>
     <nav>
-      <a href="{{ url_for('home') }}">Home</a>
-      <a href="{{ url_for('health_impact') }}">Health impact</a>
-      <a href="{{ url_for('respondents_list') }}">Respondents</a>
-      <a href="{{ url_for('genre_insights') }}">Genre insights</a>
-      <a href="{{ url_for('streaming_counts') }}">Streaming usage</a>
-      <a href="{{ url_for('hours_vs_anxiety') }}">Hours vs anxiety</a>
-      <a href="{{ url_for('data_quality') }}">Data quality</a>
-      <a href="{{ url_for('export_page') }}">Export data</a>
-      <a href="{{ url_for('export_streaming_csv') }}">Download streaming CSV</a>
+      <div class="nav-links">
+        <a href="{{ url_for('home') }}">Home</a>
+        <a href="{{ url_for('health_impact') }}">Health impact</a>
+        <a href="{{ url_for('genre_insights') }}">Genre insights</a>
+        <a href="{{ url_for('streaming_counts') }}">Usage</a>
+        <a href="{{ url_for('hours_vs_anxiety') }}">Hours vs anxiety</a>
+        <a href="{{ url_for('respondents_list') }}">Respondents</a>
+        <a href="{{ url_for('export_page') }}">Export</a>
+        <a href="{{ url_for('data_quality') }}">Data quality</a>
+      </div>
     </nav>
     <main>
       {% block content %}{% endblock %}

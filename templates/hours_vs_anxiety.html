@@ -2,22 +2,45 @@
 
 {% block content %}
 <h1>Listening duration vs average anxiety</h1>
-<p>This table highlights the relationship between listening duration and average anxiety scores.</p>
+<section class="hero-panel">
+  <p>
+    Buckets are derived from self-reported hours per day spent listening to music.
+    Use them to discuss whether heavy listening is associated with more or less anxiety across the cohort.
+  </p>
+  <p>
+    When a bucket holds fewer than five respondents its mean can move dramatically—reference the
+    Respondents page to inspect individual records if needed.
+  </p>
+</section>
 
-<table border="1">
+<section class="table-card">
+  <h3>Hours buckets</h3>
+  <table>
     <thead>
-        <tr>
-            <th>Hours per day bucket</th>
-            <th>Average anxiety</th>
-        </tr>
+      <tr>
+        <th>Hours per day bucket</th>
+        <th>Average anxiety</th>
+      </tr>
     </thead>
     <tbody>
-        {% for bucket, value in buckets.items() %}
-        <tr>
-            <td>{{ bucket }}</td>
-            <td>{{ value }}</td>
-        </tr>
-        {% endfor %}
+      {% for bucket, value in buckets.items() %}
+      <tr>
+        <td>{{ bucket }}</td>
+        <td>{{ value }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="2">No listening-hour data available.</td></tr>
+      {% endfor %}
     </tbody>
-</table>
+  </table>
+</section>
+
+<section class="chart-card">
+  <h3>Visual comparison</h3>
+  {% if buckets %}
+  <img src="{{ url_for('hours_vs_anxiety_chart') }}" alt="Hours vs anxiety chart" />
+  {% else %}
+  <p class="no-data">The chart is hidden because no buckets contain data.</p>
+  {% endif %}
+</section>
 {% endblock %}
